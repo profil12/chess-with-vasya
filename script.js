@@ -1,0 +1,715 @@
+// ========== ШАХМАТЫ С ВАСЕЙ — УЛЬТРАБЫСТРЫЙ ==========
+class ChessGame {
+    constructor() {
+        this.board = null;
+        this.currentTurn = 'white';
+        this.selectedRow = null;
+        this.selectedCol = null;
+        this.gameOver = false;
+        this.winner = null;
+        this.playerColor = null;
+        this.botColor = null;
+        this.waitingForPromotion = false;
+        this.promotionRow = null;
+        this.promotionCol = null;
+        this.promotionColor = null;
+        this.isThinking = false;
+        
+        this.initBoard();
+        this.render();
+        this.addEventListeners();
+        this.updateUI();
+        
+        this.botName = 'Вася (Быстрый)';
+        this.initChat();
+        this.lastLostPiece = null;
+    }
+    
+    initChat() {
+        const input = document.getElementById('chat-input');
+        const sendBtn = document.getElementById('chat-send');
+        if (sendBtn) sendBtn.addEventListener('click', () => this.sendMessage());
+        if (input) input.addEventListener('keypress', (e) => { if (e.key === 'Enter') this.sendMessage(); });
+    }
+    
+    sendMessage() {
+        const input = document.getElementById('chat-input');
+        const text = input.value.trim();
+        if (!text) return;
+        this.addMessage('Вы', text);
+        input.value = '';
+        setTimeout(() => {
+            const reply = this.getBotReply(text);
+            this.addMessage(this.botName, reply);
+        }, 100);
+    }
+    
+    getBotReply(userMessage) {
+        const msg = userMessage.toLowerCase();
+        
+        const replies = {
+            'привет': ['Привет! Сыграем?', 'Здравствуй!', 'О, привет!'],
+            'как дел': ['Отлично! А у тебя?', 'Хорошо!', 'Нормально!'],
+            'пока': ['Пока! Заходи ещё!', 'До встречи!', 'Удачи!'],
+            'молодец': ['Спасибо!', 'Стараюсь!', 'Приятно!'],
+            'дурак': ['Сам такой!', 'Эй!', 'Обижаешь...'],
+            'шах': ['Осторожно! Шах!', 'Шах — серьёзно!', 'Король под ударом!'],
+            'мат': ['Мат! Поздравляю!', 'Красиво!', 'Я сдаюсь...'],
+            'сдаю': ['Принимаю!', 'Спасибо за игру!', 'В следующий раз лучше!']
+        };
+        
+        for (const [key, arr] of Object.entries(replies)) {
+            if (msg.includes(key)) return arr[Math.floor(Math.random() * arr.length)];
+        }
+        
+        if (this.lastLostPiece && (msg.includes('жалко') || msg.includes('потерял'))) {
+            const pieceNames = { '♙':'пешку','♟':'пешку','♘':'коня','♞':'коня','♗':'слона','♝':'слона','♖':'ладью','♜':'ладью','♕':'ферзя','♛':'ферзя' };
+            return `Да, жалко ${pieceNames[this.lastLostPiece] || 'фигуру'}... Но я отыграюсь!`;
+        }
+        
+        const defaultReplies = [
+            'Интересный ход! ♟️',
+            'Думаю... 🤔',
+            'Неплохо!',
+            'Сейчас я покажу класс!',
+            'Так-так...',
+            'Хороший ход!',
+            'Анализирую...'
+        ];
+        return defaultReplies[Math.floor(Math.random() * defaultReplies.length)];
+    }
+    
+    addMessage(sender, text) {
+        const messagesDiv = document.getElementById('chat-messages');
+        if (!messagesDiv) return;
+        const msgDiv = document.createElement('div');
+        msgDiv.classList.add('message', sender === 'Вы' ? 'user' : 'bot');
+        msgDiv.innerText = `${sender}: ${text}`;
+        messagesDiv.appendChild(msgDiv);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+    
+    setPlayerSide(side) {
+        if (side === 'white') { this.playerColor = 'white'; this.botColor = 'black'; }
+        else if (side === 'black') { this.playerColor = 'black'; this.botColor = 'white'; }
+        else { this.playerColor = Math.random() < 0.5 ? 'white' : 'black'; this.botColor = this.playerColor === 'white' ? 'black' : 'white'; }
+        
+        this.currentTurn = 'white';
+        this.gameOver = false;
+        this.winner = null;
+        this.selectedRow = null;
+        this.selectedCol = null;
+        this.initBoard();
+        this.render();
+        this.updateUI();
+        
+        document.getElementById('side-selector').style.display = 'none';
+        if (this.playerColor === 'black') setTimeout(() => this.botMove(), 50);
+        else this.addMessage(this.botName, 'Твой ход! ♟️');
+    }
+    
+    initBoard() {
+        this.board = [
+            ['♜', '♞', '♝', '♛', '♚', '♝', '♞', '♜'],
+            ['♟', '♟', '♟', '♟', '♟', '♟', '♟', '♟'],
+            ['', '', '', '', '', '', '', ''],
+            ['', '', '', '', '', '', '', ''],
+            ['', '', '', '', '', '', '', ''],
+            ['', '', '', '', '', '', '', ''],
+            ['♙', '♙', '♙', '♙', '♙', '♙', '♙', '♙'],
+            ['♖', '♘', '♗', '♕', '♔', '♗', '♘', '♖']
+        ];
+    }
+    
+    getPieceColor(piece) {
+        if (!piece) return null;
+        const whitePieces = ['♙', '♖', '♘', '♗', '♕', '♔'];
+        const blackPieces = ['♟', '♜', '♞', '♝', '♛', '♚'];
+        if (whitePieces.includes(piece)) return 'white';
+        if (blackPieces.includes(piece)) return 'black';
+        return null;
+    }
+    
+    getPieceValue(piece) {
+        const values = { '♙': 1, '♟': 1, '♘': 3, '♞': 3, '♗': 3, '♝': 3, '♖': 5, '♜': 5, '♕': 9, '♛': 9, '♔': 100, '♚': 100 };
+        return values[piece] || 0;
+    }
+    
+    isValidMove(row, col, targetRow, targetCol) {
+        const piece = this.board[row][col];
+        if (!piece) return false;
+        const pieceColor = this.getPieceColor(piece);
+        if (pieceColor !== this.currentTurn) return false;
+        
+        const targetPiece = this.board[targetRow][targetCol];
+        const targetColor = this.getPieceColor(targetPiece);
+        if (targetColor === pieceColor) return false;
+        
+        const deltaRow = targetRow - row;
+        const deltaCol = targetCol - col;
+        const absDeltaRow = Math.abs(deltaRow);
+        const absDeltaCol = Math.abs(deltaCol);
+        
+        // Пешки
+        if (piece === '♙') {
+            if (deltaCol === 0 && deltaRow === -1 && !targetPiece) return true;
+            if (deltaCol === 0 && deltaRow === -2 && row === 6 && !targetPiece && !this.board[5][col]) return true;
+            if (absDeltaCol === 1 && deltaRow === -1 && targetColor === 'black') return true;
+            return false;
+        }
+        if (piece === '♟') {
+            if (deltaCol === 0 && deltaRow === 1 && !targetPiece) return true;
+            if (deltaCol === 0 && deltaRow === 2 && row === 1 && !targetPiece && !this.board[2][col]) return true;
+            if (absDeltaCol === 1 && deltaRow === 1 && targetColor === 'white') return true;
+            return false;
+        }
+        
+        // Ладья
+        if (piece === '♖' || piece === '♜') {
+            if (row !== targetRow && col !== targetCol) return false;
+            if (row === targetRow) {
+                const step = col < targetCol ? 1 : -1;
+                for (let c = col + step; c !== targetCol; c += step) if (this.board[row][c]) return false;
+            } else {
+                const step = row < targetRow ? 1 : -1;
+                for (let r = row + step; r !== targetRow; r += step) if (this.board[r][col]) return false;
+            }
+            return true;
+        }
+        
+        // Конь
+        if (piece === '♘' || piece === '♞') return (absDeltaRow === 2 && absDeltaCol === 1) || (absDeltaRow === 1 && absDeltaCol === 2);
+        
+        // Слон
+        if (piece === '♗' || piece === '♝') {
+            if (absDeltaRow !== absDeltaCol) return false;
+            const rowStep = deltaRow > 0 ? 1 : -1;
+            const colStep = deltaCol > 0 ? 1 : -1;
+            let r = row + rowStep, c = col + colStep;
+            while (r !== targetRow && c !== targetCol) { if (this.board[r][c]) return false; r += rowStep; c += colStep; }
+            return true;
+        }
+        
+        // Ферзь
+        if (piece === '♕' || piece === '♛') {
+            if (row === targetRow || col === targetCol || absDeltaRow === absDeltaCol) {
+                if (row === targetRow) {
+                    const step = col < targetCol ? 1 : -1;
+                    for (let c = col + step; c !== targetCol; c += step) if (this.board[row][c]) return false;
+                } else if (col === targetCol) {
+                    const step = row < targetRow ? 1 : -1;
+                    for (let r = row + step; r !== targetRow; r += step) if (this.board[r][col]) return false;
+                } else {
+                    const rowStep = deltaRow > 0 ? 1 : -1;
+                    const colStep = deltaCol > 0 ? 1 : -1;
+                    let r = row + rowStep, c = col + colStep;
+                    while (r !== targetRow && c !== targetCol) { if (this.board[r][c]) return false; r += rowStep; c += colStep; }
+                }
+                return true;
+            }
+            return false;
+        }
+        
+        // Король с рокировкой
+        if (piece === '♔' || piece === '♚') {
+            if (absDeltaRow <= 1 && absDeltaCol <= 1) {
+                const testBoard = this.copyBoard();
+                testBoard[targetRow][targetCol] = piece;
+                testBoard[row][col] = '';
+                if (this.isKingInCheck(this.currentTurn, testBoard)) return false;
+                return true;
+            }
+            
+            if (deltaRow === 0 && absDeltaCol === 2 && row === targetRow) {
+                const rookCol = deltaCol > 0 ? 7 : 0;
+                const rookRow = row;
+                const rookPiece = this.board[rookRow][rookCol];
+                if (rookPiece !== (piece === '♔' ? '♖' : '♜')) return false;
+                
+                const step = deltaCol > 0 ? 1 : -1;
+                for (let c = col + step; c !== rookCol; c += step) if (this.board[row][c]) return false;
+                
+                const testBoard = this.copyBoard();
+                testBoard[targetRow][targetCol] = piece;
+                testBoard[row][col] = '';
+                if (this.isKingInCheck(this.currentTurn, testBoard)) return false;
+                
+                const midCol = (col + targetCol) / 2;
+                const testBoardMid = this.copyBoard();
+                testBoardMid[row][midCol] = piece;
+                testBoardMid[row][col] = '';
+                if (this.isKingInCheck(this.currentTurn, testBoardMid)) return false;
+                
+                return true;
+            }
+            return false;
+        }
+        return false;
+    }
+    
+    copyBoard() {
+        return this.board.map(row => [...row]);
+    }
+    
+    isKingInCheck(color, board = this.board) {
+        let kingRow, kingCol;
+        const kingSymbol = color === 'white' ? '♔' : '♚';
+        for (let i = 0; i < 8; i++) {
+            for (let j = 0; j < 8; j++) {
+                if (board[i][j] === kingSymbol) {
+                    kingRow = i; kingCol = j;
+                    break;
+                }
+            }
+        }
+        const opponentColor = color === 'white' ? 'black' : 'white';
+        for (let i = 0; i < 8; i++) {
+            for (let j = 0; j < 8; j++) {
+                const piece = board[i][j];
+                if (piece && this.getPieceColor(piece) === opponentColor) {
+                    if (this.isValidMoveWithoutSelfCheck(piece, i, j, kingRow, kingCol, board)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+    
+    isValidMoveWithoutSelfCheck(piece, row, col, tr, tc, board) {
+        const dr = tr - row, dc = tc - col;
+        const adr = Math.abs(dr), adc = Math.abs(dc);
+        
+        if (piece === '♙') {
+            if (dc === 0 && dr === -1 && !board[tr][tc]) return true;
+            if (dc === 0 && dr === -2 && row === 6 && !board[tr][tc] && !board[5][col]) return true;
+            if (adc === 1 && dr === -1 && board[tr][tc] && this.getPieceColor(board[tr][tc]) === 'black') return true;
+            return false;
+        }
+        if (piece === '♟') {
+            if (dc === 0 && dr === 1 && !board[tr][tc]) return true;
+            if (dc === 0 && dr === 2 && row === 1 && !board[tr][tc] && !board[2][col]) return true;
+            if (adc === 1 && dr === 1 && board[tr][tc] && this.getPieceColor(board[tr][tc]) === 'white') return true;
+            return false;
+        }
+        
+        if (piece === '♖' || piece === '♜') {
+            if (row !== tr && col !== tc) return false;
+            if (row === tr) {
+                const step = tc > col ? 1 : -1;
+                for (let c = col+step; c !== tc; c+=step) if (board[row][c]) return false;
+            } else {
+                const step = tr > row ? 1 : -1;
+                for (let r = row+step; r !== tr; r+=step) if (board[r][col]) return false;
+            }
+            return true;
+        }
+        
+        if (piece === '♘' || piece === '♞') return (adr === 2 && adc === 1) || (adr === 1 && adc === 2);
+        
+        if (piece === '♗' || piece === '♝') {
+            if (adr !== adc) return false;
+            const rStep = dr > 0 ? 1 : -1;
+            const cStep = dc > 0 ? 1 : -1;
+            let r = row+rStep, c = col+cStep;
+            while (r !== tr && c !== tc) { if (board[r][c]) return false; r += rStep; c += cStep; }
+            return true;
+        }
+        
+        if (piece === '♕' || piece === '♛') {
+            if (row === tr || col === tc || adr === adc) {
+                if (row === tr) {
+                    const step = tc > col ? 1 : -1;
+                    for (let c = col+step; c !== tc; c+=step) if (board[row][c]) return false;
+                } else if (col === tc) {
+                    const step = tr > row ? 1 : -1;
+                    for (let r = row+step; r !== tr; r+=step) if (board[r][col]) return false;
+                } else {
+                    const rStep = dr > 0 ? 1 : -1;
+                    const cStep = dc > 0 ? 1 : -1;
+                    let r = row+rStep, c = col+cStep;
+                    while (r !== tr && c !== tc) { if (board[r][c]) return false; r += rStep; c += cStep; }
+                }
+                return true;
+            }
+            return false;
+        }
+        
+        if (piece === '♔' || piece === '♚') return adr <= 1 && adc <= 1;
+        
+        return false;
+    }
+    
+    getAllValidMoves(color) {
+        const moves = [];
+        for (let i = 0; i < 8; i++) {
+            for (let j = 0; j < 8; j++) {
+                const piece = this.board[i][j];
+                if (piece && this.getPieceColor(piece) === color) {
+                    for (let ti = 0; ti < 8; ti++) {
+                        for (let tj = 0; tj < 8; tj++) {
+                            if (this.isValidMove(i, j, ti, tj)) {
+                                moves.push({ from: [i, j], to: [ti, tj] });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return moves;
+    }
+    
+    isCheck(color) {
+        return this.isKingInCheck(color, this.board);
+    }
+    
+    isCheckmate(color) {
+        if (!this.isCheck(color)) return false;
+        const moves = this.getAllValidMoves(color);
+        for (const move of moves) {
+            const [row, col] = move.from;
+            const [tr, tc] = move.to;
+            const piece = this.board[row][col];
+            const targetPiece = this.board[tr][tc];
+            
+            this.board[tr][tc] = piece;
+            this.board[row][col] = '';
+            const stillInCheck = this.isCheck(color);
+            this.board[row][col] = piece;
+            this.board[tr][tc] = targetPiece;
+            
+            if (!stillInCheck) return false;
+        }
+        return true;
+    }
+    
+    isStalemate(color) {
+        if (this.isCheck(color)) return false;
+        return this.getAllValidMoves(color).length === 0;
+    }
+    
+    checkGameEnd() {
+        if (this.isCheckmate(this.currentTurn)) {
+            this.gameOver = true;
+            this.winner = this.currentTurn === 'white' ? 'black' : 'white';
+            document.getElementById('status').innerHTML = `МАТ! Победили ${this.winner === 'white' ? 'Белые' : 'Чёрные'}! 🏆`;
+            this.addMessage(this.botName, this.winner === this.botColor ? 'Я победил! ♟️' : 'Ты победил! Поздравляю!');
+        } else if (this.isCheck(this.currentTurn)) {
+            document.getElementById('status').innerHTML = `${this.currentTurn === 'white' ? 'Белым' : 'Чёрным'} ШАХ! 🎯`;
+            if (this.currentTurn === this.botColor) {
+                this.addMessage(this.botName, `ШАХ! Защищаюсь! 👑`);
+            } else {
+                this.addMessage(this.botName, `ШАХ! Попробуй уйти!`);
+            }
+        } else if (this.isStalemate(this.currentTurn)) {
+            this.gameOver = true;
+            document.getElementById('status').innerHTML = 'Пат! Ничья!';
+            this.addMessage(this.botName, 'Пат. Ничья!');
+        } else {
+            document.getElementById('status').innerHTML = '';
+        }
+    }
+    
+    showPromotionModal() {
+        const modal = document.createElement('div');
+        modal.id = 'promotion-modal';
+        modal.style.cssText = `
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); display: flex; justify-content: center;
+            align-items: center; z-index: 1000;
+        `;
+        modal.innerHTML = `
+            <div style="background: linear-gradient(135deg, #1a2a3a, #0a1a2a); padding: 30px; border-radius: 40px;
+                        border: 2px solid #ffaa00; text-align: center; box-shadow: 0 0 30px rgba(255,170,0,0.3);">
+                <h3 style="color: #ffd700; margin-bottom: 20px;">ВЫБЕРИТЕ ФИГУРУ</h3>
+                <div style="display: flex; gap: 20px; justify-content: center;">
+                    <button class="promo-btn" data-piece="♕" style="font-size: 2.5rem; background: #333; border: none; cursor: pointer; padding: 10px 20px; border-radius: 20px;">♕</button>
+                    <button class="promo-btn" data-piece="♖" style="font-size: 2.5rem; background: #333; border: none; cursor: pointer; padding: 10px 20px; border-radius: 20px;">♖</button>
+                    <button class="promo-btn" data-piece="♗" style="font-size: 2.5rem; background: #333; border: none; cursor: pointer; padding: 10px 20px; border-radius: 20px;">♗</button>
+                    <button class="promo-btn" data-piece="♘" style="font-size: 2.5rem; background: #333; border: none; cursor: pointer; padding: 10px 20px; border-radius: 20px;">♘</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        
+        const btns = modal.querySelectorAll('.promo-btn');
+        btns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const choice = e.target.dataset.piece;
+                this.promotePawn(this.promotionRow, this.promotionCol, choice);
+                modal.remove();
+            });
+        });
+    }
+    
+    promotePawn(row, col, choice) {
+        let newPiece;
+        if (this.promotionColor === 'white') {
+            newPiece = choice;
+        } else {
+            if (choice === '♕') newPiece = '♛';
+            else if (choice === '♖') newPiece = '♜';
+            else if (choice === '♗') newPiece = '♝';
+            else newPiece = '♞';
+        }
+        this.board[row][col] = newPiece;
+        this.waitingForPromotion = false;
+        this.promotionRow = null;
+        this.promotionCol = null;
+        this.promotionColor = null;
+        
+        this.currentTurn = this.currentTurn === 'white' ? 'black' : 'white';
+        this.checkGameEnd();
+        
+        this.render();
+        this.updateUI();
+        
+        if (!this.gameOver && this.currentTurn === this.botColor) {
+            setTimeout(() => this.botMove(), 30);
+        }
+    }
+    
+    applyMove(row, col, tr, tc) {
+        const piece = this.board[row][col];
+        const targetPiece = this.board[tr][tc];
+        
+        if (this.currentTurn === this.botColor && targetPiece) {
+            this.lastLostPiece = targetPiece;
+        } else {
+            this.lastLostPiece = null;
+        }
+        
+        if (!this.isValidMove(row, col, tr, tc)) return false;
+        
+        const isCastling = (piece === '♔' || piece === '♚') && Math.abs(tc - col) === 2;
+        
+        this.board[tr][tc] = piece;
+        this.board[row][col] = '';
+        
+        if (isCastling) {
+            const rookFromCol = tc > col ? 7 : 0;
+            const rookToCol = tc > col ? tc - 1 : tc + 1;
+            const rookPiece = this.board[tr][rookFromCol];
+            this.board[tr][rookToCol] = rookPiece;
+            this.board[tr][rookFromCol] = '';
+        }
+        
+        if (this.isKingInCheck(this.currentTurn)) {
+            this.board[row][col] = piece;
+            this.board[tr][tc] = targetPiece;
+            if (isCastling) {
+                const rookFromCol = tc > col ? 7 : 0;
+                const rookToCol = tc > col ? tc - 1 : tc + 1;
+                const rookPiece = this.board[tr][rookToCol];
+                this.board[tr][rookFromCol] = rookPiece;
+                this.board[tr][rookToCol] = '';
+            }
+            return false;
+        }
+        
+        const movedPiece = this.board[tr][tc];
+        const isPawnPromotion = (movedPiece === '♙' && tr === 0) || (movedPiece === '♟' && tr === 7);
+        
+        if (isPawnPromotion) {
+            if (this.currentTurn === this.playerColor) {
+                this.waitingForPromotion = true;
+                this.promotionRow = tr;
+                this.promotionCol = tc;
+                this.promotionColor = this.currentTurn;
+                this.showPromotionModal();
+                return true;
+            } else {
+                const newPiece = this.currentTurn === 'white' ? '♕' : '♛';
+                this.board[tr][tc] = newPiece;
+            }
+        }
+        
+        this.currentTurn = this.currentTurn === 'white' ? 'black' : 'white';
+        this.checkGameEnd();
+        
+        this.render();
+        this.updateUI();
+        
+        if (!this.gameOver && this.currentTurn === this.botColor) {
+            setTimeout(() => this.botMove(), 30);
+        }
+        return true;
+    }
+    
+        botMove() {
+        if (this.gameOver || this.waitingForPromotion || this.currentTurn !== this.botColor) return;
+        if (this.isThinking) return;
+        
+        this.isThinking = true;
+        
+        // Мгновенный ход без задержки
+        setTimeout(() => {
+            if (this.gameOver || this.waitingForPromotion || this.currentTurn !== this.botColor) {
+                this.isThinking = false;
+                return;
+            }
+            
+            let moves = this.getAllValidMoves(this.botColor);
+            
+            if (moves.length === 0) {
+                this.isThinking = false;
+                this.checkGameEnd();
+                return;
+            }
+            
+            const isInCheck = this.isCheck(this.botColor);
+            
+            if (isInCheck) {
+                const safeMoves = [];
+                for (const move of moves) {
+                    const [row, col] = move.from;
+                    const [tr, tc] = move.to;
+                    const piece = this.board[row][col];
+                    const targetPiece = this.board[tr][tc];
+                    
+                    this.board[tr][tc] = piece;
+                    this.board[row][col] = '';
+                    
+                    const stillInCheck = this.isCheck(this.botColor);
+                    
+                    this.board[row][col] = piece;
+                    this.board[tr][tc] = targetPiece;
+                    
+                    if (!stillInCheck) {
+                        safeMoves.push(move);
+                    }
+                }
+                
+                if (safeMoves.length === 0) {
+                    this.isThinking = false;
+                    this.checkGameEnd();
+                    return;
+                }
+                moves = safeMoves;
+            }
+            
+            if (moves.length === 0) {
+                this.isThinking = false;
+                return;
+            }
+            
+            // Максимально быстрая оценка — берём первый хороший ход
+            let bestMove = moves[0];
+            let bestScore = -Infinity;
+            const pieceValues = { '♙': 1, '♟': 1, '♘': 3, '♞': 3, '♗': 3, '♝': 3, '♖': 5, '♜': 5, '♕': 9, '♛': 9 };
+            
+            // Ограничиваем количество просматриваемых ходов для скорости
+            const movesToCheck = moves.slice(0, 15);
+            
+            for (const move of movesToCheck) {
+                const [row, col] = move.from;
+                const [tr, tc] = move.to;
+                const targetPiece = this.board[tr][tc];
+                let score = 0;
+                
+                if (targetPiece) score += pieceValues[targetPiece] * 10;
+                
+                const centerDist = Math.abs(tr - 3.5) + Math.abs(tc - 3.5);
+                score += (7 - centerDist) * 0.2;
+                score += Math.random() * 0.5;
+                
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestMove = move;
+                }
+            }
+            
+            if (bestMove) {
+                const [row, col] = bestMove.from;
+                const [tr, tc] = bestMove.to;
+                this.applyMove(row, col, tr, tc);
+                this.render();
+                this.updateUI();
+            }
+            
+            this.isThinking = false;
+        }, 5);
+    }
+    
+    handleCellClick(row, col) {
+        if (this.gameOver || this.waitingForPromotion || this.currentTurn !== this.playerColor) return;
+        
+        if (this.selectedRow !== null && this.selectedCol !== null) {
+            const success = this.applyMove(this.selectedRow, this.selectedCol, row, col);
+            this.selectedRow = null;
+            this.selectedCol = null;
+            this.render();
+            this.updateUI();
+        } else {
+            const piece = this.board[row][col];
+            if (piece && this.getPieceColor(piece) === this.playerColor) {
+                this.selectedRow = row;
+                this.selectedCol = col;
+                this.render();
+                this.updateUI();
+            }
+        }
+    }
+    
+    resetGame() {
+        document.getElementById('side-selector').style.display = 'block';
+        this.gameOver = false;
+        this.waitingForPromotion = false;
+        this.playerColor = null;
+        this.botColor = null;
+        this.selectedRow = null;
+        this.selectedCol = null;
+        this.lastLostPiece = null;
+        this.initBoard();
+        this.render();
+        this.updateUI();
+        document.getElementById('status').innerHTML = '';
+        this.addMessage(this.botName, 'Новая игра! Выбери сторону! ♟️');
+    }
+    
+    render() {
+        const boardEl = document.getElementById('board');
+        if (!boardEl) return;
+        boardEl.innerHTML = '';
+        for (let i = 0; i < 8; i++) {
+            for (let j = 0; j < 8; j++) {
+                const cell = document.createElement('div');
+                cell.classList.add('cell', (i + j) % 2 === 0 ? 'light' : 'dark');
+                cell.textContent = this.board[i][j];
+                if (this.selectedRow === i && this.selectedCol === j) cell.classList.add('selected');
+                if (this.selectedRow !== null && this.selectedCol !== null && !this.waitingForPromotion && this.isValidMove(this.selectedRow, this.selectedCol, i, j)) {
+                    const targetPiece = this.board[i][j];
+                    if (targetPiece && this.getPieceColor(targetPiece) !== this.getPieceColor(this.board[this.selectedRow][this.selectedCol])) {
+                        cell.classList.add('possible-capture');
+                    } else if (!targetPiece) {
+                        cell.classList.add('possible-move');
+                    }
+                }
+                cell.addEventListener('click', (function(r, c) { return function() { game.handleCellClick(r, c); }; })(i, j));
+                boardEl.appendChild(cell);
+            }
+        }
+    }
+    
+    updateUI() {
+        const turnSpan = document.getElementById('turn');
+        if (!turnSpan) return;
+        if (this.gameOver) turnSpan.textContent = this.winner === 'white' ? 'Белые победили!' : 'Чёрные победили!';
+        else if (!this.playerColor) turnSpan.textContent = 'Выберите сторону';
+        else if (this.waitingForPromotion) turnSpan.textContent = 'Выберите фигуру';
+        else turnSpan.textContent = this.currentTurn === this.playerColor ? 'Ваш ход' : 'Вася думает...';
+    }
+    
+    addEventListeners() {
+        const resetBtn = document.getElementById('reset-btn');
+        const sideWhite = document.getElementById('side-white');
+        const sideBlack = document.getElementById('side-black');
+        const sideRandom = document.getElementById('side-random');
+        if (resetBtn) resetBtn.addEventListener('click', () => this.resetGame());
+        if (sideWhite) sideWhite.addEventListener('click', () => this.setPlayerSide('white'));
+        if (sideBlack) sideBlack.addEventListener('click', () => this.setPlayerSide('black'));
+        if (sideRandom) sideRandom.addEventListener('click', () => this.setPlayerSide('random'));
+    }
+}
+
+const game = new ChessGame();
