@@ -565,7 +565,7 @@ class ChessGame {
         }
     }
     
-    resetGame() {
+        resetGame() {
         if (this.gameMode === 'twoPlayer') {
             this.playerColor = null;
             this.botColor = null;
@@ -579,12 +579,15 @@ class ChessGame {
             document.getElementById('status').innerHTML = '';
             this.addMessage('Вася', 'Режим двух игроков! Белые ходят первыми.');
         } else {
-            document.getElementById('side-selector').style.display = 'block';
+            // Показываем выбор стороны
+            const selector = document.getElementById('side-selector');
+            if (selector) selector.style.display = 'block';
             this.gameOver = false;
             this.playerColor = null;
             this.botColor = null;
             this.selectedRow = null;
             this.selectedCol = null;
+            this.currentTurn = 'white';
             this.initBoard();
             this.render();
             this.updateUI();
