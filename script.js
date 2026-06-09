@@ -1,4 +1,4 @@
-// ========== ШАХМАТЫ С ВАСЕЙ — ULTRA (платные анимации + 2 игрока) ==========
+// ========== ШАХМАТЫ С ВАСЕЙ — ULTRA (исправлено) ==========
 class ChessGame {
     constructor() {
         this.board = null;
@@ -14,7 +14,7 @@ class ChessGame {
         this.promotionCol = null;
         this.promotionColor = null;
         this.isThinking = false;
-        this.gameMode = 'bot'; // 'bot' или 'twoPlayer'
+        this.gameMode = 'bot';
         this.animating = false;
         
         this.initBoard();
@@ -89,6 +89,7 @@ class ChessGame {
             this.addMessage('Вася', 'Режим двух игроков! Белые ходят первыми.');
             this.playerColor = null;
             this.botColor = null;
+            document.getElementById('side-selector').style.display = 'none';
         } else {
             this.addMessage('Вася', 'Режим игры с ботом. Выбери сторону!');
             document.getElementById('side-selector').style.display = 'block';
@@ -109,8 +110,11 @@ class ChessGame {
         this.render();
         this.updateUI();
         document.getElementById('side-selector').style.display = 'none';
-        if (this.gameMode === 'bot' && this.playerColor === 'black') setTimeout(() => this.botMove(), 50);
-        else if (this.gameMode === 'bot') this.addMessage(this.botName, 'Твой ход! ♟️');
+        if (this.gameMode === 'bot' && this.playerColor === 'black') {
+            setTimeout(() => this.botMove(), 100);
+        } else if (this.gameMode === 'bot') {
+            this.addMessage(this.botName, 'Твой ход! ♟️');
+        }
     }
     
     initBoard() {
@@ -407,36 +411,7 @@ class ChessGame {
         this.checkGameEnd();
         this.render();
         this.updateUI();
-        if (!this.gameOver && this.currentTurn === this.botColor && this.gameMode === 'bot') setTimeout(() => this.botMove(), 30);
-    }
-    
-    async animateMove(fromRow, fromCol, toRow, toCol) {
-        this.animating = true;
-        const fromCell = document.querySelector(`.cell[data-row="${fromRow}"][data-col="${fromCol}"]`);
-        const toCell = document.querySelector(`.cell[data-row="${toRow}"][data-col="${toCol}"]`);
-        if (!fromCell || !toCell) { this.animating = false; return; }
-        const fromRect = fromCell.getBoundingClientRect();
-        const toRect = toCell.getBoundingClientRect();
-        const clone = fromCell.cloneNode(true);
-        clone.style.position = 'fixed';
-        clone.style.top = `${fromRect.top}px`;
-        clone.style.left = `${fromRect.left}px`;
-        clone.style.width = `${fromRect.width}px`;
-        clone.style.height = `${fromRect.height}px`;
-        clone.style.fontSize = window.getComputedStyle(fromCell).fontSize;
-        clone.style.zIndex = '1000';
-        clone.style.transition = 'all 0.2s ease-out';
-        clone.style.pointerEvents = 'none';
-        document.body.appendChild(clone);
-        requestAnimationFrame(() => {
-            clone.style.top = `${toRect.top}px`;
-            clone.style.left = `${toRect.left}px`;
-            clone.style.width = `${toRect.width}px`;
-            clone.style.height = `${toRect.height}px`;
-        });
-        await new Promise(resolve => setTimeout(resolve, 200));
-        clone.remove();
-        this.animating = false;
+        if (!this.gameOver && this.currentTurn === this.botColor && this.gameMode === 'bot') setTimeout(() => this.botMove(), 50);
     }
     
     applyMove(row, col, tr, tc) {
@@ -467,7 +442,6 @@ class ChessGame {
             }
             return false;
         }
-        this.animateMove(row, col, tr, tc);
         const movedPiece = this.board[tr][tc];
         const isPawnPromotion = (movedPiece === '♙' && tr === 0) || (movedPiece === '♟' && tr === 7);
         if (isPawnPromotion) {
@@ -486,7 +460,7 @@ class ChessGame {
         this.checkGameEnd();
         this.render();
         this.updateUI();
-        if (!this.gameOver && this.currentTurn === this.botColor && this.gameMode === 'bot') setTimeout(() => this.botMove(), 30);
+        if (!this.gameOver && this.currentTurn === this.botColor && this.gameMode === 'bot') setTimeout(() => this.botMove(), 50);
         return true;
     }
     
@@ -529,26 +503,6 @@ class ChessGame {
                 if (this.board[row][col]) score += pieceValues[this.board[row][col]] * 0.5;
                 const centerDist = Math.abs(tr - 3.5) + Math.abs(tc - 3.5);
                 score += (7 - centerDist) * 0.5;
-                const boardAfter = this.copyBoard();
-                const pieceMoved = boardAfter[row][col];
-                boardAfter[tr][tc] = pieceMoved;
-                boardAfter[row][col] = '';
-                let opponentThreat = 0;
-                for (let i = 0; i < 8; i++) {
-                    for (let j = 0; j < 8; j++) {
-                        const p = boardAfter[i][j];
-                        if (p && this.getPieceColor(p) === (this.botColor === 'white' ? 'black' : 'white')) {
-                            for (let ti = 0; ti < 8; ti++) {
-                                for (let tj = 0; tj < 8; tj++) {
-                                    if (this.isValidMoveWithoutSelfCheck(p, i, j, ti, tj, boardAfter) && boardAfter[ti][tj] && this.getPieceValue(boardAfter[ti][tj]) > 0) {
-                                        opponentThreat += this.getPieceValue(boardAfter[ti][tj]) * 2;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                score -= opponentThreat * 0.3;
                 score += Math.random() * 0.8;
                 if (score > bestScore) { bestScore = score; bestMove = move; }
             }
@@ -560,11 +514,11 @@ class ChessGame {
                 this.updateUI();
             }
             this.isThinking = false;
-        }, 20);
+        }, 30);
     }
     
     handleCellClick(row, col) {
-        if (this.gameOver || this.waitingForPromotion || this.animating) return;
+        if (this.gameOver || this.waitingForPromotion) return;
         if (this.gameMode === 'twoPlayer') {
             if (this.selectedRow !== null && this.selectedCol !== null) {
                 this.applyMove(this.selectedRow, this.selectedCol, row, col);
@@ -641,8 +595,6 @@ class ChessGame {
                 const cell = document.createElement('div');
                 cell.classList.add('cell', (i + j) % 2 === 0 ? 'light' : 'dark');
                 cell.textContent = this.board[i][j];
-                cell.setAttribute('data-row', i);
-                cell.setAttribute('data-col', j);
                 if (this.selectedRow === i && this.selectedCol === j) cell.classList.add('selected');
                 if (this.selectedRow !== null && this.selectedCol !== null && !this.waitingForPromotion && this.isValidMove(this.selectedRow, this.selectedCol, i, j)) {
                     const targetPiece = this.board[i][j];
@@ -666,12 +618,20 @@ class ChessGame {
     }
     
     addEventListeners() {
-        document.getElementById('reset-btn').onclick = () => this.resetGame();
-        document.getElementById('side-white').onclick = () => this.setPlayerSide('white');
-        document.getElementById('side-black').onclick = () => this.setPlayerSide('black');
-        document.getElementById('side-random').onclick = () => this.setPlayerSide('random');
-        document.getElementById('two-player-btn').onclick = () => this.setGameMode('twoPlayer');
-        document.getElementById('bot-mode-btn').onclick = () => this.setGameMode('bot');
+        const resetBtn = document.getElementById('reset-btn');
+        if (resetBtn) resetBtn.onclick = () => this.resetGame();
+        
+        const sideWhite = document.getElementById('side-white');
+        const sideBlack = document.getElementById('side-black');
+        const sideRandom = document.getElementById('side-random');
+        const botModeBtn = document.getElementById('bot-mode-btn');
+        const twoPlayerBtn = document.getElementById('two-player-btn');
+        
+        if (sideWhite) sideWhite.onclick = () => this.setPlayerSide('white');
+        if (sideBlack) sideBlack.onclick = () => this.setPlayerSide('black');
+        if (sideRandom) sideRandom.onclick = () => this.setPlayerSide('random');
+        if (botModeBtn) botModeBtn.onclick = () => this.setGameMode('bot');
+        if (twoPlayerBtn) twoPlayerBtn.onclick = () => this.setGameMode('twoPlayer');
     }
 }
 
