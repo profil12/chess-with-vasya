@@ -2,48 +2,52 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Шахматы с ботом Васей</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Шахматы с Васей — Гроссмейстер</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="main-container">
-        <div class="chess-container">
-            <h1>Шахматы с <span class="bot-name">Васей</span></h1>
-            
-            <!-- Выбор стороны -->
-            <div class="side-selector" id="side-selector">
-                <h3>Выберите сторону</h3>
-                <button id="side-white">Белые (я хожу первый)</button>
-                <button id="side-black">Чёрные (Вася ходит первый)</button>
-                <button id="side-random">🎲 Случайно</button>
+    <div class="full-container">
+        <div class="chess-header">
+            <h1>♔ ШАХМАТЫ С ВАСЕЙ ♚</h1>
+        </div>
+
+        <div id="side-selector" class="side-selector">
+            <h3>Выбери сторону</h3>
+            <div class="side-buttons">
+                <button id="side-white">♔ БЕЛЫЕ (я хожу первый)</button>
+                <button id="side-black">♚ ЧЁРНЫЕ (Вася ходит первый)</button>
+                <button id="side-random">🎲 СЛУЧАЙНО</button>
+                <button id="bot-mode-btn">🤖 С БОТОМ (Вася)</button>
+                <button id="two-player-btn">👥 ДВА ИГРОКА</button>
             </div>
-            
-            <div class="game-info">
+        </div>
+
+        <div class="game-wrapper">
+            <div class="board-container">
                 <div class="turn-indicator">
                     Ход: <span id="turn">—</span>
                 </div>
-                <button id="reset-btn">Новая игра</button>
+                <div class="board" id="board"></div>
+                <button id="reset-btn">🔄 НОВАЯ ИГРА</button>
+                <div class="status" id="status"></div>
             </div>
-            
-            <div class="board" id="board"></div>
-            <div class="status" id="status"></div>
-        </div>
-        
-        <!-- Чат с ботом -->
-        <div class="chat-container">
-            <div class="chat-header">
-                💬 Чат с <strong>Васей</strong>
-            </div>
-            <div class="chat-messages" id="chat-messages">
-                <div class="message bot">Вася: Привет! Я бот Вася. Сыграем в шахматы? Выбери сторону выше 👆</div>
-            </div>
-            <div class="chat-input">
-                <input type="text" id="chat-input" placeholder="Напиши Васе..." maxlength="100">
-                <button id="chat-send">📤</button>
+
+            <div class="chat-container">
+                <div class="chat-header">
+                    💬 Чат с <strong>Васей (IQ 250)</strong>
+                </div>
+                <div class="chat-messages" id="chat-messages">
+                    <div class="message bot">Вася: Привет! Я бот Вася. Сыграем в шахматы? Выбери режим и сторону 👑</div>
+                </div>
+                <div class="chat-input">
+                    <input type="text" id="chat-input" placeholder="Напиши Васе..." maxlength="100">
+                    <button id="chat-send">📤</button>
+                </div>
             </div>
         </div>
     </div>
+
     <script src="script.js"></script>
 </body>
 </html>
