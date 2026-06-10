@@ -134,11 +134,12 @@ class ChessGame {
     }
     
     getPieceValue(piece) {
+        if (!piece) return 0;
         const values = { '♙':1, '♟':1, '♘':3, '♞':3, '♗':3, '♝':3, '♖':5, '♜':5, '♕':9, '♛':9 };
         return values[piece] || 0;
     }
     
-    // Базовая проверка хода (без проверки шаха своему королю)
+    // Базовая проверка хода без проверки шаха
     isValidMoveBasic(row, col, tr, tc, board) {
         const piece = board[row][col];
         if (!piece) return false;
@@ -227,7 +228,7 @@ class ChessGame {
         if (piece === '♔' || piece === '♚') {
             if (adr <= 1 && adc <= 1) return true;
             // Рокировка
-            if (dr === 0 && adc === 2 && row === tr && !this.isKingInCheck(this.currentTurn, board)) {
+            if (dr === 0 && adc === 2 && row === tr) {
                 const rookCol = dc > 0 ? 7 : 0;
                 const rook = board[row][rookCol];
                 if (rook !== (piece === '♔' ? '♖' : '♜')) return false;
@@ -235,33 +236,11 @@ class ChessGame {
                 for (let c = col + step; c !== rookCol; c += step) {
                     if (board[row][c]) return false;
                 }
-                const midCol = (col + tc) / 2;
-                const testBoard = this.copyBoard(board);
-                testBoard[row][midCol] = piece;
-                testBoard[row][col] = '';
-                if (this.isKingInCheck(this.currentTurn, testBoard)) return false;
-                return true;
+                return !this.isKingInCheck(this.currentTurn, board);
             }
             return false;
         }
         return false;
-    }
-    
-    // Полная проверка хода (с проверкой шаха своему королю)
-    isValidMove(row, col, tr, tc) {
-        if (!this.isValidMoveBasic(row, col, tr, tc, this.board)) return false;
-        
-        // Проверяем, не будет ли король под шахом после хода
-        const testBoard = this.copyBoard(this.board);
-        const piece = testBoard[row][col];
-        testBoard[tr][tc] = piece;
-        testBoard[row][col] = '';
-        
-        return !this.isKingInCheck(this.currentTurn, testBoard);
-    }
-    
-    copyBoard(board) {
-        return board.map(row => [...row]);
     }
     
     isKingInCheck(color, board) {
@@ -279,23 +258,48 @@ class ChessGame {
         }
         if (kingRow === -1) return false;
         
-        // Проверяем, атакует ли противник короля
+        // Проверяем все фигуры противника
         const opponentColor = color === 'white' ? 'black' : 'white';
-        const oldTurn = this.currentTurn;
-        this.currentTurn = opponentColor;
         for (let i = 0; i < 8; i++) {
             for (let j = 0; j < 8; j++) {
                 const piece = board[i][j];
                 if (piece && this.getPieceColor(piece) === opponentColor) {
-                    if (this.isValidMoveBasic(i, j, kingRow, kingCol, board)) {
-                        this.currentTurn = oldTurn;
-                        return true;
-                    }
+                    // Временно меняем текущий цвет для проверки
+                    const oldTurn = this.currentTurn;
+                    this.currentTurn = opponentColor;
+                    const isValid = this.isValidMoveBasic(i, j, kingRow, kingCol, board);
+                    this.currentTurn = oldTurn;
+                    if (isValid) return true;
                 }
             }
         }
-        this.currentTurn = oldTurn;
         return false;
+    }
+    
+    isValidMove(row, col, tr, tc) {
+        const piece = this.board[row][col];
+        if (!piece) return false;
+        const pieceColor = this.getPieceColor(piece);
+        if (pieceColor !== this.currentTurn) return false;
+        
+        const targetPiece = this.board[tr][tc];
+        if (targetPiece && this.getPieceColor(targetPiece) === pieceColor) return false;
+        
+        // Сначала проверяем базовую возможность хода
+        const oldTurn = this.currentTurn;
+        const isValidBasic = this.isValidMoveBasic(row, col, tr, tc, this.board);
+        if (!isValidBasic) return false;
+        
+        // Проверяем, не будет ли король под шахом после хода
+        const testBoard = this.copyBoard(this.board);
+        testBoard[tr][tc] = testBoard[row][col];
+        testBoard[row][col] = '';
+        
+        return !this.isKingInCheck(this.currentTurn, testBoard);
+    }
+    
+    copyBoard(board) {
+        return board.map(row => [...row]);
     }
     
     getAllValidMoves(color) {
@@ -323,8 +327,7 @@ class ChessGame {
     
     isCheckmate(color) {
         if (!this.isCheck(color)) return false;
-        const moves = this.getAllValidMoves(color);
-        return moves.length === 0;
+        return this.getAllValidMoves(color).length === 0;
     }
     
     isStalemate(color) {
@@ -388,7 +391,7 @@ class ChessGame {
         this.render();
         this.updateUI();
         if (!this.gameOver && this.currentTurn === this.botColor && this.gameMode === 'bot') {
-            setTimeout(() => this.botMove(), 100);
+            setTimeout(() => this.botMove(), 50);
         }
     }
     
@@ -418,11 +421,11 @@ class ChessGame {
         const isPawnPromotion = (movedPiece === '♙' && tr === 0) || (movedPiece === '♟' && tr === 7);
         
         if (isPawnPromotion) {
-            if (this.gameMode === 'twoPlayer' || this.currentTurn === this.playerColor) {
+            if (this.gameMode === 'twoPlayer' || (this.gameMode === 'bot' && this.currentTurn === this.playerColor)) {
                 this.waitingForPromotion = true;
                 this.promotionRow = tr;
                 this.promotionCol = tc;
-                this.promotionColor = this.currentTurn === 'white' ? 'black' : 'white';
+                this.promotionColor = this.currentTurn;
                 this.showPromotionModal();
                 return true;
             } else {
@@ -435,12 +438,12 @@ class ChessGame {
         this.updateUI();
         
         if (!this.gameOver && this.currentTurn === this.botColor && this.gameMode === 'bot') {
-            setTimeout(() => this.botMove(), 100);
+            setTimeout(() => this.botMove(), 50);
         }
         return true;
     }
     
-    // ГРОССМЕЙСТЕР ВАСЯ
+    // ГЕНИЙ ВАСЯ (не отдаёт фигуры, защищается, атакует)
     botMove() {
         if (this.gameOver) return;
         if (this.currentTurn !== this.botColor) return;
@@ -462,7 +465,7 @@ class ChessGame {
                 return;
             }
             
-            // Оценка ходов
+            // Оценка ходов (гроссмейстерская)
             let bestMove = null;
             let bestScore = -Infinity;
             
@@ -473,36 +476,44 @@ class ChessGame {
                 const ourPiece = this.board[row][col];
                 let score = 0;
                 
-                // 1. Взятие фигуры (чем ценнее, тем лучше)
+                // 1. Взятие фигуры (самый главный приоритет)
                 if (targetPiece) {
                     const targetValue = this.getPieceValue(targetPiece);
-                    score += targetValue * 15;
+                    score += targetValue * 20;
+                    // Если берём ферзя — огромный бонус
+                    if (targetPiece === '♕' || targetPiece === '♛') score += 100;
                 }
                 
-                // 2. Защита своих фигур (если фигуру могут съесть)
+                // 2. Защита своих фигур под ударом
                 let ourPieceUnderAttack = false;
+                let attackerValue = 0;
                 for (let i = 0; i < 8; i++) {
                     for (let j = 0; j < 8; j++) {
                         const p = this.board[i][j];
                         if (p && this.getPieceColor(p) === (this.botColor === 'white' ? 'black' : 'white')) {
-                            if (this.isValidMoveBasic(i, j, tr, tc, this.board)) {
+                            if (this.isValidMoveBasic(i, j, row, col, this.board)) {
                                 ourPieceUnderAttack = true;
+                                attackerValue = this.getPieceValue(p);
                             }
                         }
                     }
                 }
                 if (ourPieceUnderAttack && ourPiece) {
-                    score += this.getPieceValue(ourPiece) * 2;
+                    const ourValue = this.getPieceValue(ourPiece);
+                    // Если нашу ценную фигуру атакуют — уходим или защищаем
+                    if (ourValue > attackerValue) {
+                        score += ourValue * 8;
+                    }
                 }
                 
                 // 3. Контроль центра
                 const centerDist = Math.abs(tr - 3.5) + Math.abs(tc - 3.5);
-                score += (7 - centerDist) * 1.5;
+                score += (7 - centerDist) * 2;
                 
                 // 4. Развитие фигур в дебюте
                 const totalMoves = this.getAllValidMoves('white').length + this.getAllValidMoves('black').length;
                 if (totalMoves < 30 && (ourPiece === '♘' || ourPiece === '♞' || ourPiece === '♗' || ourPiece === '♝')) {
-                    score += 5;
+                    score += 6;
                 }
                 
                 // 5. Шах противнику
@@ -517,17 +528,28 @@ class ChessGame {
                 this.board[tr][tc] = targetBefore;
                 this.currentTurn = oldTurn;
                 if (givesCheck) {
-                    score += 20;
+                    score += 25;
                 }
                 
                 // 6. Рокировка
                 if ((ourPiece === '♔' || ourPiece === '♚') && Math.abs(tc - col) === 2) {
-                    score += 10;
+                    score += 15;
                 }
                 
                 // 7. Превращение пешки
                 if ((ourPiece === '♙' && tr === 0) || (ourPiece === '♟' && tr === 7)) {
-                    score += 30;
+                    score += 40;
+                }
+                
+                // 8. Уход от шаха (если король под шахом)
+                if (this.isCheck(this.botColor)) {
+                    // Проверяем, уводит ли этот ход короля из-под шаха
+                    const testBoard = this.copyBoard(this.board);
+                    testBoard[tr][tc] = testBoard[row][col];
+                    testBoard[row][col] = '';
+                    if (!this.isKingInCheck(this.botColor, testBoard)) {
+                        score += 200;
+                    }
                 }
                 
                 // Небольшая случайность
@@ -548,7 +570,7 @@ class ChessGame {
             }
             
             this.botThinking = false;
-        }, 100);
+        }, 80);
     }
     
     handleCellClick(row, col) {
