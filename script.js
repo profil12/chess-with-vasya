@@ -15,6 +15,8 @@ class ChessGame {
         this.gameMode = 'bot';
         this.botThinking = false;
         this.moveHistory = [];
+        this.transpositionTable = new Map(); // Хеш-таблица для запоминания позиций
+        this.nodesSearched = 0;
         
         this.initBoard();
         this.render();
@@ -22,6 +24,18 @@ class ChessGame {
         this.updateUI();
         this.initChat();
         this.addDrawButton();
+    }
+    
+    // Хеширование позиции (упрощённое Zobrist-подобное)
+    hashBoard() {
+        let hash = '';
+        for (let i = 0; i < 8; i++) {
+            for (let j = 0; j < 8; j++) {
+                hash += this.board[i][j] || '.';
+            }
+        }
+        hash += this.currentTurn;
+        return hash;
     }
     
     addDrawButton() {
@@ -136,6 +150,7 @@ class ChessGame {
             ['♖', '♘', '♗', '♕', '♔', '♗', '♘', '♖']
         ];
         this.moveHistory = [];
+        this.transpositionTable.clear();
     }
     
     getPieceColor(piece) {
@@ -153,19 +168,74 @@ class ChessGame {
         return values[piece] || 0;
     }
     
-    isOnlyKingsLeft() {
-        let whiteKing = false, blackKing = false;
+    // ========== НОВАЯ ОЦЕНКА ПОЗИЦИИ ==========
+    evaluatePosition(board, color) {
+        let score = 0;
+        const multiplier = color === 'white' ? 1 : -1;
+        
         for (let i = 0; i < 8; i++) {
             for (let j = 0; j < 8; j++) {
-                const p = this.board[i][j];
-                if (p === '♔') whiteKing = true;
-                else if (p === '♚') blackKing = true;
-                else if (p !== '') return false;
+                const piece = board[i][j];
+                if (!piece) continue;
+                const pieceColor = this.getPieceColor(piece);
+                let value = this.getPieceValue(piece);
+                
+                // 1. Центр
+                const centerDist = Math.abs(i - 3.5) + Math.abs(j - 3.5);
+                value += (7 - centerDist) * 0.1;
+                
+                // 2. Пешечная структура (сдвоенные пешки штрафуем)
+                if (piece === '♙' || piece === '♟') {
+                    let doubled = false;
+                    for (let k = 0; k < 8; k++) {
+                        if (k !== i && board[k][j] === piece) doubled = true;
+                    }
+                    if (doubled) value -= 0.3;
+                    // Проходная пешка (бонус)
+                    let passed = true;
+                    for (let k = 0; k < 8; k++) {
+                        const p = board[k][j];
+                        if (p && this.getPieceColor(p) !== pieceColor && (p === '♙' || p === '♟')) passed = false;
+                    }
+                    if (passed) value += 0.5;
+                }
+                
+                // 3. Открытые линии для ладей и ферзей
+                if (piece === '♖' || piece === '♕' || piece === '♜' || piece === '♛') {
+                    let openFile = true;
+                    for (let k = 0; k < 8; k++) {
+                        const p = board[k][j];
+                        if (p && p !== piece && (p === '♙' || p === '♟')) openFile = false;
+                    }
+                    if (openFile) value += 0.4;
+                }
+                
+                // 4. Безопасность короля (пешки вокруг)
+                if (piece === '♔') {
+                    for (let di = -1; di <= 1; di++) {
+                        for (let dj = -1; dj <= 1; dj++) {
+                            const ni = i + di, nj = j + dj;
+                            if (ni >= 0 && ni < 8 && nj >= 0 && nj < 8 && board[ni][nj] === '♙') value += 0.2;
+                        }
+                    }
+                }
+                if (piece === '♚') {
+                    for (let di = -1; di <= 1; di++) {
+                        for (let dj = -1; dj <= 1; dj++) {
+                            const ni = i + di, nj = j + dj;
+                            if (ni >= 0 && ni < 8 && nj >= 0 && nj < 8 && board[ni][nj] === '♟') value += 0.2;
+                        }
+                    }
+                }
+                
+                if (pieceColor === 'white') score += value;
+                else score -= value;
             }
         }
-        return whiteKing && blackKing;
+        return multiplier * score;
     }
     
+    // ========== БАЗОВЫЕ ШАХМАТНЫЕ ФУНКЦИИ ==========
     isValidMoveBasic(row, col, tr, tc, board) {
         const piece = board[row][col];
         if (!piece) return false;
@@ -284,17 +354,10 @@ class ChessGame {
     
     isStalemate(color) {
         if (this.isCheck(color)) return false;
-        if (this.isOnlyKingsLeft()) return true;
         return this.getAllValidMoves(color).length === 0;
     }
     
     checkGameEnd() {
-        if (this.isOnlyKingsLeft()) {
-            this.gameOver = true;
-            document.getElementById('status').innerHTML = '🤝 Только короли! Ничья! 🤝';
-            this.addMessage('Вася', 'Ничья! Ты спасся...');
-            return;
-        }
         if (this.isCheckmate(this.currentTurn)) {
             this.gameOver = true;
             this.winner = this.currentTurn === 'white' ? 'black' : 'white';
@@ -311,7 +374,6 @@ class ChessGame {
         }
     }
     
-    // Модалка выбора фигуры при превращении
     showPromotionModal() {
         const modal = document.createElement('div');
         modal.id = 'promotion-modal';
@@ -347,7 +409,6 @@ class ChessGame {
         this.promotionRow = null;
         this.promotionCol = null;
         this.promotionColor = null;
-        // Меняем ход после превращения
         this.currentTurn = this.currentTurn === 'white' ? 'black' : 'white';
         this.checkGameEnd();
         this.render();
@@ -376,6 +437,7 @@ class ChessGame {
         }
         
         this.moveHistory.push({ from: [row, col], to: [tr, tc], piece, captured: targetBefore });
+        this.transpositionTable.clear(); // Очищаем кэш при реальном ходе
         
         const movedPiece = this.board[tr][tc];
         const isPawnPromotion = (movedPiece === '♙' && tr === 0) || (movedPiece === '♟' && tr === 7);
@@ -388,7 +450,6 @@ class ChessGame {
                 this.showPromotionModal();
                 return true;
             } else {
-                // Бот превращает в ферзя
                 this.board[tr][tc] = movedPiece === '♙' ? '♕' : '♛';
             }
         }
@@ -404,128 +465,149 @@ class ChessGame {
         return true;
     }
     
-    // =============== НОВЫЙ СТРАШНЫЙ БОТ ===============
-    evaluateBoard(board, color) {
-        let score = 0;
-        const multiplier = color === 'white' ? 1 : -1;
-        for (let i = 0; i < 8; i++) {
-            for (let j = 0; j < 8; j++) {
-                const piece = board[i][j];
-                if (!piece) continue;
-                const pieceColor = this.getPieceColor(piece);
-                let value = this.getPieceValue(piece);
-                // Бонус за центр
-                const centerDist = Math.abs(i - 3.5) + Math.abs(j - 3.5);
-                value += (7 - centerDist) * 0.05;
-                if (pieceColor === 'white') score += value;
-                else score -= value;
-            }
-        }
-        return multiplier * score;
+    // ========== MINIMAX С ГЛУБИНОЙ 6, АЛЬФА-БЕТА, ТАБЛИЦАМИ И СОРТИРОВКОЙ ==========
+    orderMoves(moves, board) {
+        // Простая сортировка: сначала взятия + шах, потом остальные
+        return moves.sort((a, b) => {
+            const aPiece = board[a.from[0]][a.from[1]];
+            const bPiece = board[b.from[0]][b.from[1]];
+            const aTarget = board[a.to[0]][a.to[1]];
+            const bTarget = board[b.to[0]][b.to[1]];
+            const aCapture = aTarget ? this.getPieceValue(aTarget) - this.getPieceValue(aPiece) : 0;
+            const bCapture = bTarget ? this.getPieceValue(bTarget) - this.getPieceValue(bPiece) : 0;
+            return bCapture - aCapture;
+        });
     }
     
-    minimax(board, depth, isMaximizing, alpha, beta, botColor) {
+    minimax(depth, isMaximizing, alpha, beta, botColor, startTime, timeLimit) {
+        // Ограничение по времени (1-2 секунды)
+        if (Date.now() - startTime > timeLimit) {
+            return this.evaluatePosition(this.board, botColor);
+        }
+        
+        const hash = this.hashBoard();
+        if (this.transpositionTable.has(hash)) {
+            const entry = this.transpositionTable.get(hash);
+            if (entry.depth >= depth) return entry.value;
+        }
+        
         if (depth === 0) {
-            return this.evaluateBoard(board, botColor);
+            const val = this.evaluatePosition(this.board, botColor);
+            return val;
         }
-        const moves = [];
-        const currentColor = isMaximizing ? botColor : (botColor === 'white' ? 'black' : 'white');
-        for (let i = 0; i < 8; i++) {
-            for (let j = 0; j < 8; j++) {
-                const piece = board[i][j];
-                if (piece && this.getPieceColor(piece) === currentColor) {
-                    for (let ti = 0; ti < 8; ti++) {
-                        for (let tj = 0; tj < 8; tj++) {
-                            const oldTurn = this.currentTurn;
-                            this.currentTurn = currentColor;
-                            const valid = this.isValidMove(i, j, ti, tj);
-                            this.currentTurn = oldTurn;
-                            if (valid) {
-                                moves.push({ from: [i, j], to: [ti, tj] });
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        
+        const moves = this.getAllValidMoves(isMaximizing ? botColor : (botColor === 'white' ? 'black' : 'white'));
         if (moves.length === 0) {
-            return this.evaluateBoard(board, botColor);
+            // Мат или пат
+            if (this.isCheck(isMaximizing ? botColor : (botColor === 'white' ? 'black' : 'white'))) {
+                return isMaximizing ? -10000 : 10000;
+            }
+            return 0;
         }
+        
+        const orderedMoves = this.orderMoves(moves, this.board);
+        
         if (isMaximizing) {
             let maxEval = -Infinity;
-            for (const move of moves) {
-                const testBoard = this.copyBoard(board);
+            for (const move of orderedMoves) {
+                const testBoard = this.copyBoard(this.board);
                 const piece = testBoard[move.from[0]][move.from[1]];
                 testBoard[move.to[0]][move.to[1]] = piece;
                 testBoard[move.from[0]][move.from[1]] = '';
-                const eval = this.minimax(testBoard, depth - 1, false, alpha, beta, botColor);
+                const oldTurn = this.currentTurn;
+                this.currentTurn = botColor === 'white' ? 'black' : 'white';
+                const tempBoard = this.board;
+                this.board = testBoard;
+                const eval = this.minimax(depth - 1, false, alpha, beta, botColor, startTime, timeLimit);
+                this.board = tempBoard;
+                this.currentTurn = oldTurn;
                 maxEval = Math.max(maxEval, eval);
                 alpha = Math.max(alpha, eval);
                 if (beta <= alpha) break;
             }
+            this.transpositionTable.set(hash, { depth, value: maxEval });
             return maxEval;
         } else {
             let minEval = Infinity;
-            for (const move of moves) {
-                const testBoard = this.copyBoard(board);
+            for (const move of orderedMoves) {
+                const testBoard = this.copyBoard(this.board);
                 const piece = testBoard[move.from[0]][move.from[1]];
                 testBoard[move.to[0]][move.to[1]] = piece;
                 testBoard[move.from[0]][move.from[1]] = '';
-                const eval = this.minimax(testBoard, depth - 1, true, alpha, beta, botColor);
+                const oldTurn = this.currentTurn;
+                this.currentTurn = botColor === 'white' ? 'white' : 'black';
+                const tempBoard = this.board;
+                this.board = testBoard;
+                const eval = this.minimax(depth - 1, true, alpha, beta, botColor, startTime, timeLimit);
+                this.board = tempBoard;
+                this.currentTurn = oldTurn;
                 minEval = Math.min(minEval, eval);
                 beta = Math.min(beta, eval);
                 if (beta <= alpha) break;
             }
+            this.transpositionTable.set(hash, { depth, value: minEval });
             return minEval;
         }
     }
     
     getBestMove() {
-        const depth = this.moveHistory.length < 30 ? 2 : (this.moveHistory.length < 60 ? 2 : 2); // Глубина 2 для скорости
+        const startTime = Date.now();
+        const timeLimit = 1500; // 1.5 секунды на ход (можно 2000 для 2 сек)
         let bestMoves = [];
         let bestScore = -Infinity;
         const moves = this.getAllValidMoves(this.botColor);
+        
+        if (moves.length === 0) return null;
+        
+        // Сначала пробуем глубину 4, потом если время есть — 6
         for (const move of moves) {
             const testBoard = this.copyBoard(this.board);
             const piece = testBoard[move.from[0]][move.from[1]];
             testBoard[move.to[0]][move.to[1]] = piece;
             testBoard[move.from[0]][move.from[1]] = '';
-            const score = this.minimax(testBoard, depth, false, -Infinity, Infinity, this.botColor);
+            const oldTurn = this.currentTurn;
+            this.currentTurn = this.botColor === 'white' ? 'black' : 'white';
+            const tempBoard = this.board;
+            this.board = testBoard;
+            let score = this.minimax(4, false, -Infinity, Infinity, this.botColor, startTime, timeLimit);
+            // Если осталось время — углубляемся до 6
+            if (Date.now() - startTime < timeLimit - 200) {
+                score = this.minimax(6, false, -Infinity, Infinity, this.botColor, startTime, timeLimit);
+            }
+            this.board = tempBoard;
+            this.currentTurn = oldTurn;
+            
             if (score > bestScore) {
                 bestScore = score;
                 bestMoves = [move];
-            } else if (Math.abs(score - bestScore) < 0.1) {
+            } else if (Math.abs(score - bestScore) < 0.5) {
                 bestMoves.push(move);
             }
         }
+        
         if (bestMoves.length === 0) return null;
         return bestMoves[Math.floor(Math.random() * bestMoves.length)];
     }
     
-    // Генератор 500+ дебютных ходов
     getOpeningBook() {
         const book = [];
-        // Белые дебюты
         const whiteOpenings = [
             [6,4,4,4], [6,3,4,3], [7,1,5,2], [7,6,5,5], [7,5,5,5], [7,2,5,3], [7,4,5,4],
             [6,0,5,0], [6,2,5,2], [6,5,5,5], [6,6,5,6], [6,7,5,7], [7,0,5,0], [7,1,5,3],
             [7,2,5,4], [7,3,5,5], [7,4,5,6], [7,5,5,7], [6,1,5,1], [6,2,4,2], [6,3,4,3],
             [6,4,4,5], [6,5,4,5], [6,6,4,6], [6,7,4,7], [7,1,5,1], [7,6,5,6], [7,0,6,0],
-            [7,7,6,7], [6,0,4,0], [6,7,4,7], [7,3,5,4], [7,4,5,5], [7,5,5,4], [7,2,5,2],
-            [6,1,3,1], [6,2,3,2], [6,5,3,5], [6,6,3,6], [7,4,6,4], [7,2,6,2], [7,5,6,5]
+            [7,7,6,7], [6,0,4,0], [6,7,4,7], [7,3,5,4], [7,4,5,5], [7,5,5,4], [7,2,5,2]
         ];
-        // Чёрные дебюты (симметрично, но с учётом переворота)
         const blackOpenings = [
             [1,4,3,4], [1,3,3,3], [0,1,2,2], [0,6,2,5], [0,5,2,5], [0,2,2,3], [0,4,2,4],
             [1,0,2,0], [1,2,2,2], [1,5,2,5], [1,6,2,6], [1,7,2,7], [0,0,2,0], [0,1,2,3],
             [0,2,2,4], [0,3,2,5], [0,4,2,6], [0,5,2,7], [1,1,2,1], [1,2,3,2], [1,3,3,3],
             [1,4,3,5], [1,5,3,5], [1,6,3,6], [1,7,3,7], [0,1,2,1], [0,6,2,6], [0,0,1,0],
-            [0,7,1,7], [1,0,3,0], [1,7,3,7], [0,3,2,4], [0,4,2,5], [0,5,2,4], [0,2,2,2],
-            [1,1,2,1], [1,2,2,2], [1,5,2,5], [1,6,2,6], [0,4,1,4], [0,2,1,2], [0,5,1,5]
+            [0,7,1,7], [1,0,3,0], [1,7,3,7], [0,3,2,4], [0,4,2,5], [0,5,2,4], [0,2,2,2]
         ];
         
-        for (let i = 0; i < 500; i++) {
-            if (i < 250) {
+        for (let i = 0; i < 600; i++) {
+            if (i < 300) {
                 const idx = i % whiteOpenings.length;
                 const move = whiteOpenings[idx];
                 book.push({ from: [move[0], move[1]], to: [move[2], move[3]] });
@@ -535,7 +617,6 @@ class ChessGame {
                 book.push({ from: [move[0], move[1]], to: [move[2], move[3]] });
             }
         }
-        // Перемешиваем немного, чтобы не было полной одинаковости
         for (let i = book.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [book[i], book[j]] = [book[j], book[i]];
@@ -546,15 +627,16 @@ class ChessGame {
     botMove() {
         if (this.gameOver || this.currentTurn !== this.botColor || this.gameMode !== 'bot' || this.botThinking) return;
         this.botThinking = true;
+        this.addMessage('Вася', 'Думаю... 🧠');
         
         setTimeout(() => {
             if (this.gameOver || this.currentTurn !== this.botColor) { this.botThinking = false; return; }
             
-            const moveCount = this.moveHistory.length;
             let bestMove = null;
+            const moveCount = this.moveHistory.length;
             
-            // 1. Дебютная книга (первые 30 ходов)
-            if (moveCount < 30) {
+            // Дебютная книга (первые 20 ходов)
+            if (moveCount < 20) {
                 const openingBook = this.getOpeningBook();
                 for (const bookMove of openingBook) {
                     const piece = this.board[bookMove.from[0]]?.[bookMove.from[1]];
@@ -565,12 +647,10 @@ class ChessGame {
                 }
             }
             
-            // 2. Если дебют не сработал или кончился — включаем minimax
             if (!bestMove) {
                 bestMove = this.getBestMove();
             }
             
-            // 3. Аварийный случай — любой легальный ход
             if (!bestMove) {
                 const moves = this.getAllValidMoves(this.botColor);
                 if (moves.length > 0) bestMove = moves[Math.floor(Math.random() * moves.length)];
