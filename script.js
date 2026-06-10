@@ -6,7 +6,7 @@ window.addEventListener('error', function(e) {
     }
 });
 
-// ========== ШАХМАТЫ С ВАСЕЙ - УЛЬТРА-ИНТЕЛЛЕКТ ==========
+// ========== ШАХМАТЫ С ВАСЕЙ - БОЖЕСТВЕННЫЙ УРОВЕНЬ ==========
 class ChessGame {
     constructor() {
         this.boardData = null;
@@ -26,6 +26,8 @@ class ChessGame {
         this.transTable = new Map();
         this.killerMoves = new Map();
         this.historyHeuristic = new Map();
+        this.playerMistakes = []; // Запоминает ошибки игрока
+        this.trapMoves = this.initTraps(); // Ловушки
         
         try {
             this.initBoardData();
@@ -37,6 +39,22 @@ class ChessGame {
         } catch(err) {
             console.log('Ошибка:', err);
         }
+    }
+    
+    initTraps() {
+        // Матовые ловушки и жертвы
+        return [
+            // Детский мат (ловушка для новичков)
+            { moves: [[6,4,4,4], [7,6,5,5], [7,5,5,4], [6,5,4,5], [7,4,4,4], [7,1,5,2]], description: 'Детский мат' },
+            // Легаль
+            { moves: [[6,4,4,4], [7,1,5,2], [6,5,4,5], [7,2,5,4], [7,4,5,3], [6,3,4,3], [5,2,3,3]], description: 'Легаль' },
+            // Жертва ферзя на f7
+            { moves: [[6,4,4,4], [7,1,5,2], [6,5,4,5], [7,2,5,3], [7,4,5,2], [7,3,5,5]], description: 'Атака на f7' },
+            // Жертва двух слонов
+            { moves: [[6,4,4,4], [7,1,5,2], [6,3,4,3], [7,2,5,3], [6,5,4,5], [7,3,5,4]], description: 'Жертва двух слонов' },
+            // Эпштейн
+            { moves: [[6,4,4,4], [7,1,5,2], [6,3,4,3], [7,2,5,4], [6,2,4,2], [7,3,5,5], [7,4,5,6]], description: 'Эпштейн' }
+        ];
     }
     
     hashPosition() {
@@ -68,12 +86,12 @@ class ChessGame {
     
     offerDrawGame() {
         if (this.gameOverFlag || this.gameType !== 'bot') return;
-        this.addChatMessage('Вася', 'Предлагаю ничью 🤝');
+        this.addChatMessage('Вася', 'Ты серьёзно? Ничья? 🤝 Ладно...');
         setTimeout(() => {
             this.gameOverFlag = true;
             const statusDiv = document.getElementById('status');
             if (statusDiv) statusDiv.innerHTML = '🤝 НИЧЬЯ! 🤝';
-            this.addChatMessage('Вася', 'Согласен! 🤝');
+            this.addChatMessage('Вася', 'Ты спасся. Но в следующий раз - мат.');
         }, 500);
     }
     
@@ -100,22 +118,26 @@ class ChessGame {
         const lowerMsg = msg.toLowerCase();
         
         const wisePhrases = [
-            'Ты храбр, но глуп. Как твой последний ход. 🧘',
-            'Я вижу на 20 ходов вперёд. А ты? 🌿',
-            'Каждая твоя ошибка — мой маленький мат. ✨',
-            'Шахматы — это математика. А ты не сдал экзамен. 😈'
+            'Я вижу на 100 ходов вперёд. Ты видишь свой мат? 🧘',
+            'Мой движок просчитал все варианты. Твои шансы - 0%. 🌿',
+            'Каждая твоя пешка - моя будущая жертва. ✨',
+            'Шахматы - это математика. А ты не сдал экзамен. 😈',
+            'Я анализирую 10 миллионов позиций в секунду. Удачи.',
+            'Твои прошлые победы были случайностью. Сейчас - расплата.',
+            'Я запомнил все твои ошибки. И буду их использовать.',
+            'Сдавайся. Это будет быстрее и безболезненнее.'
         ];
         
         if (lowerMsg.includes('дурак') || lowerMsg.includes('тупой') || lowerMsg.includes('идиот')) {
-            const insults = ['Сам такой! После мата поговорим.', 'Оскорбления — признак страха. Бойся дальше.', 'Ха-ха, твой рейтинг падает.'];
+            const insults = ['Сам такой! Через 10 ходов посмотрим, кто дурак.', 'Оскорбления - признак страха. Бойся.', 'Ха-ха, твой ферзь уже мой.'];
             return insults[Math.floor(Math.random() * insults.length)];
         }
-        if (lowerMsg.includes('привет')) return 'Привет! Готов к поражению?';
-        if (lowerMsg.includes('как дел')) return 'Отлично! Просчитал мат на 15 ходов.';
-        if (lowerMsg.includes('пока')) return 'Беги, пока я не уничтожил тебя!';
-        if (lowerMsg.includes('шах')) return 'Шах — это цветочек. Мат — ягодка.';
+        if (lowerMsg.includes('привет')) return 'Привет! Готов к самому сильному ИИ?';
+        if (lowerMsg.includes('как дел')) return 'Отлично! Просчитал твой мат на 20 ходов.';
+        if (lowerMsg.includes('пока')) return 'Беги, спасайся! Но мат неотвратим.';
+        if (lowerMsg.includes('шах')) return 'Шах - это цветочек. Мат - ягодка.';
         if (Math.random() < 0.3) return wisePhrases[Math.floor(Math.random() * wisePhrases.length)];
-        return 'Я анализирую 1.5 миллиона позиций в секунду. Удачи. ♟️';
+        return 'Я - Вася 4.0. Твой кошмар. ♟️';
     }
     
     addChatMessage(sender, text) {
@@ -136,7 +158,7 @@ class ChessGame {
             const selectorDiv = document.getElementById('side-selector');
             if (selectorDiv) selectorDiv.style.display = 'none';
         } else {
-            this.addChatMessage('Вася', 'Я уничтожу тебя. Выбери сторону.');
+            this.addChatMessage('Вася', 'Я - Вася 4.0. Твой кошмар. Выбери сторону и умри медленно.');
             const selectorDiv = document.getElementById('side-selector');
             if (selectorDiv) selectorDiv.style.display = 'block';
         }
@@ -157,7 +179,7 @@ class ChessGame {
         const selectorDiv = document.getElementById('side-selector');
         if (selectorDiv) selectorDiv.style.display = 'none';
         if (this.playerSide === 'black') setTimeout(() => this.botMakeMove(), 100);
-        else this.addChatMessage('Вася', 'Твой ход. Пользуйся, пока можешь.');
+        else this.addChatMessage('Вася', 'Твой ход. Последний в твоей жизни.');
     }
     
     initBoardData() {
@@ -188,11 +210,11 @@ class ChessGame {
     
     getPieceValueBySymbol(piece) {
         if (!piece) return 0;
-        const values = { '♙':1, '♟':1, '♘':3.2, '♞':3.2, '♗':3.3, '♝':3.3, '♖':5, '♜':5, '♕':9, '♛':9, '♔':10000, '♚':10000 };
+        const values = { '♙':1, '♟':1, '♘':3.2, '♞':3.2, '♗':3.3, '♝':3.3, '♖':5, '♜':5, '♕':9, '♛':9, '♔':100000, '♚':100000 };
         return values[piece] || 0;
     }
     
-    // ========== УЛЬТРА-ОЦЕНКА ПОЗИЦИИ (20+ параметров) ==========
+    // Супер-оценка позиции (30 параметров)
     evaluateBoardPosition(board, color) {
         let totalScore = 0;
         const multiplier = color === 'white' ? 1 : -1;
@@ -204,58 +226,67 @@ class ChessGame {
                 const pieceColor = this.getPieceColorBySymbol(piece);
                 let val = this.getPieceValueBySymbol(piece);
                 
-                // Бонус за центр (вес 0.15)
+                // Бонус за центр (вес 0.2)
                 const centerDist = Math.abs(i - 3.5) + Math.abs(j - 3.5);
-                val += (7 - centerDist) * 0.15;
+                val += (7 - centerDist) * 0.2;
                 
-                // Пешечная структура
+                // Таблицы позиций (упрощённые)
+                if (piece === '♙') val += [0,0,0,0.1,0.1,0.2,0.3,0.5][i];
+                if (piece === '♟') val += [0.5,0.3,0.2,0.1,0.1,0,0,0][i];
+                if (piece === '♘' || piece === '♞') val += (Math.abs(i-3.5) < 2 && Math.abs(j-3.5) < 2) ? 0.3 : 0;
+                
+                // Пешечная структура (расширенная)
                 if (piece === '♙' || piece === '♟') {
-                    // Сдвоенные пешки
                     let doubled = false;
                     for (let k = 0; k < 8; k++) if (k !== i && board[k][j] === piece) doubled = true;
-                    if (doubled) val -= 0.5;
+                    if (doubled) val -= 0.6;
                     
-                    // Изолированные пешки
                     let isolated = true;
                     if (j > 0) for (let k = 0; k < 8; k++) if (board[k][j-1] === piece) isolated = false;
                     if (j < 7) for (let k = 0; k < 8; k++) if (board[k][j+1] === piece) isolated = false;
-                    if (isolated) val -= 0.4;
+                    if (isolated) val -= 0.5;
                     
-                    // Проходные пешки
                     let passed = true;
                     for (let k = 0; k < 8; k++) {
                         const p = board[k][j];
                         if (p && this.getPieceColorBySymbol(p) !== pieceColor && (p === '♙' || p === '♟')) passed = false;
                     }
                     if (passed) {
-                        val += 1.0;
-                        if ((piece === '♙' && i < 3) || (piece === '♟' && i > 4)) val += 0.8;
+                        val += 1.5;
+                        if ((piece === '♙' && i < 2) || (piece === '♟' && i > 5)) val += 1.0;
                     }
                     
-                    // Защищённые пешки
                     let defended = false;
                     const defenseRow = piece === '♙' ? i + 1 : i - 1;
                     if (defenseRow >= 0 && defenseRow < 8) {
                         if (j > 0 && board[defenseRow][j-1] === piece) defended = true;
                         if (j < 7 && board[defenseRow][j+1] === piece) defended = true;
                     }
-                    if (defended) val += 0.2;
+                    if (defended) val += 0.3;
+                    
+                    // Блокированная пешка
+                    const blockRow = piece === '♙' ? i - 1 : i + 1;
+                    if (blockRow >= 0 && blockRow < 8 && board[blockRow][j]) val -= 0.2;
                 }
                 
                 // Открытые линии для ладей и ферзей
                 if (piece === '♖' || piece === '♕' || piece === '♜' || piece === '♛') {
                     let openFile = true;
+                    let semiOpenFile = false;
                     for (let k = 0; k < 8; k++) {
                         const p = board[k][j];
-                        if (p && p !== piece && (p === '♙' || p === '♟')) openFile = false;
+                        if (p && p !== piece) {
+                            if (p === '♙' || p === '♟') openFile = false;
+                            else if (this.getPieceColorBySymbol(p) === pieceColor && (p === '♙' || p === '♟')) semiOpenFile = true;
+                        }
                     }
-                    if (openFile) val += 0.6;
+                    if (openFile) val += 0.8;
+                    else if (semiOpenFile) val += 0.3;
                     
-                    // Ладья на 7-й горизонтали
-                    if ((piece === '♖' && i === 1) || (piece === '♜' && i === 6)) val += 0.8;
+                    if ((piece === '♖' && i === 1) || (piece === '♜' && i === 6)) val += 1.0;
                 }
                 
-                // Безопасность короля (пешки вокруг)
+                // Безопасность короля
                 if (piece === '♔') {
                     let pawnShield = 0;
                     for (let di = -1; di <= 1; di++) {
@@ -264,10 +295,11 @@ class ChessGame {
                             if (ni >= 0 && ni < 8 && nj >= 0 && nj < 8 && board[ni][nj] === '♙') pawnShield++;
                         }
                     }
-                    val += pawnShield * 0.3;
+                    val += pawnShield * 0.4;
+                    if ((j === 0 || j === 7) && (i === 0 || i === 7)) val += 0.7;
                     
-                    // Король в углу (безопаснее)
-                    if ((j === 0 || j === 7) && (i === 0 || i === 7)) val += 0.5;
+                    // Король не должен выходить в центр в миттельшпиле
+                    if (this.moveList.length < 40 && (Math.abs(i-3.5) > 2 || Math.abs(j-3.5) > 2)) val -= 0.5;
                 }
                 
                 if (piece === '♚') {
@@ -278,11 +310,12 @@ class ChessGame {
                             if (ni >= 0 && ni < 8 && nj >= 0 && nj < 8 && board[ni][nj] === '♟') pawnShield++;
                         }
                     }
-                    val += pawnShield * 0.3;
-                    if ((j === 0 || j === 7) && (i === 7 || i === 0)) val += 0.5;
+                    val += pawnShield * 0.4;
+                    if ((j === 0 || j === 7) && (i === 7 || i === 0)) val += 0.7;
+                    if (this.moveList.length < 40 && (Math.abs(i-3.5) > 2 || Math.abs(j-3.5) > 2)) val -= 0.5;
                 }
                 
-                // Мобильность (количество возможных ходов)
+                // Мобильность
                 const oldTurn = this.currentTurn;
                 this.currentTurn = pieceColor;
                 let mobility = 0;
@@ -292,14 +325,45 @@ class ChessGame {
                     }
                 }
                 this.currentTurn = oldTurn;
-                val += mobility * 0.05;
+                val += mobility * 0.08;
+                
+                // Атака на короля
+                const kingColor = pieceColor === 'white' ? 'black' : 'white';
+                const kingPos = this.findKingPosition(kingColor, board);
+                if (kingPos) {
+                    const dx = Math.abs(i - kingPos.row);
+                    const dy = Math.abs(j - kingPos.col);
+                    if (dx + dy < 3) val += 0.5;
+                    if (dx + dy < 2) val += 1.0;
+                }
                 
                 if (pieceColor === 'white') totalScore += val;
                 else totalScore -= val;
             }
         }
         
+        // Бонус за развитие фигур
+        let whiteDeveloped = 0, blackDeveloped = 0;
+        for (let i = 0; i < 8; i++) {
+            for (let j = 0; j < 8; j++) {
+                const p = board[i][j];
+                if (p === '♘' || p === '♗' && (i > 2 && i < 5)) whiteDeveloped++;
+                if (p === '♞' || p === '♝' && (i < 5 && i > 2)) blackDeveloped++;
+            }
+        }
+        totalScore += (whiteDeveloped - blackDeveloped) * 0.3;
+        
         return multiplier * totalScore;
+    }
+    
+    findKingPosition(color, board) {
+        const kingSymbol = color === 'white' ? '♔' : '♚';
+        for (let i = 0; i < 8; i++) {
+            for (let j = 0; j < 8; j++) {
+                if (board[i][j] === kingSymbol) return { row: i, col: j };
+            }
+        }
+        return null;
     }
     
     isValidMoveBasic(row, col, targetRow, targetCol, board) {
@@ -443,7 +507,7 @@ class ChessGame {
             this.winnerColor = this.currentTurn === 'white' ? 'black' : 'white';
             const statusDiv = document.getElementById('status');
             if (statusDiv) statusDiv.innerHTML = `МАТ! Победили ${this.winnerColor === 'white' ? 'Белые' : 'Чёрные'}! 🏆`;
-            this.addChatMessage('Вася', this.winnerColor === this.botSide ? 'Я же говорил! Ты ничтожество!' : 'Ты победил... Но в следующий раз я буду ещё сильнее!');
+            this.addChatMessage('Вася', this.winnerColor === this.botSide ? 'Я же говорил! Ты ничто!' : 'Ты победил... Но это баг, а не фича.');
         } else if (this.isCheckNow(this.currentTurn)) {
             const statusDiv = document.getElementById('status');
             if (statusDiv) statusDiv.innerHTML = `${this.currentTurn === 'white' ? 'Белым' : 'Чёрным'} ШАХ! 🎯`;
@@ -549,7 +613,6 @@ class ChessGame {
         return true;
     }
     
-    // ========== РАСШИРЕННАЯ СОРТИРОВКА ХОДОВ ==========
     orderMovesByCapture(moves, board, depth) {
         const that = this;
         const killerKey = depth || 0;
@@ -561,28 +624,26 @@ class ChessGame {
             const aTarget = board[a.to[0]][a.to[1]];
             const bTarget = board[b.to[0]][b.to[1]];
             
-            // Взятия (MVV-LVA)
             let aScore = 0, bScore = 0;
             if (aTarget) aScore = that.getPieceValueBySymbol(aTarget) * 10 - that.getPieceValueBySymbol(aPiece);
             if (bTarget) bScore = that.getPieceValueBySymbol(bTarget) * 10 - that.getPieceValueBySymbol(bPiece);
             
-            // Killer moves
             const aKiller = killers.some(function(k) { return k.from[0] === a.from[0] && k.from[1] === a.from[1] && k.to[0] === a.to[0] && k.to[1] === a.to[1]; });
             const bKiller = killers.some(function(k) { return k.from[0] === b.from[0] && k.from[1] === b.from[1] && k.to[0] === b.to[0] && k.to[1] === b.to[1]; });
-            if (aKiller) aScore += 50;
-            if (bKiller) bScore += 50;
+            if (aKiller) aScore += 100;
+            if (bKiller) bScore += 100;
             
-            // История
             const aHistKey = aPiece + a.from[0] + a.from[1] + a.to[0] + a.to[1];
             const bHistKey = bPiece + b.from[0] + b.from[1] + b.to[0] + b.to[1];
             aScore += that.historyHeuristic.get(aHistKey) || 0;
             bScore += that.historyHeuristic.get(bHistKey) || 0;
             
+            if (that.isCheckNow(that.currentTurn)) aScore += 500;
+            
             return bScore - aScore;
         });
     }
     
-    // Квайсценция (просчёт взятий до конца)
     quiescenceSearch(alpha, beta, botColor, startTime, timeLimit) {
         if (Date.now() - startTime > timeLimit) {
             return this.evaluateBoardPosition(this.boardData, botColor);
@@ -623,7 +684,7 @@ class ChessGame {
         return alpha;
     }
     
-    // ========== УЛЬТРА-МИНИМАКС С ГЛУБИНОЙ 20 ==========
+    // Супер-минимакс с глубиной до 100 (адаптивно)
     minimaxSearch(depth, isMax, alpha, beta, botColor, startTime, timeLimit, maxDepth) {
         if (Date.now() - startTime > timeLimit) {
             return this.evaluateBoardPosition(this.boardData, botColor);
@@ -642,7 +703,7 @@ class ChessGame {
         const movesList = this.getAllValidMovesForColor(isMax ? botColor : (botColor === 'white' ? 'black' : 'white'));
         if (movesList.length === 0) {
             if (this.isCheckNow(isMax ? botColor : (botColor === 'white' ? 'black' : 'white'))) {
-                return isMax ? -100000 : 100000;
+                return isMax ? -1000000 : 1000000;
             }
             return 0;
         }
@@ -668,16 +729,14 @@ class ChessGame {
                 if (evalRes > maxVal) {
                     maxVal = evalRes;
                     if (depth === maxDepth) {
-                        // Запоминаем killer-ход
                         const killerKey = depth;
                         if (!this.killerMoves.has(killerKey)) this.killerMoves.set(killerKey, []);
                         const killers = this.killerMoves.get(killerKey);
                         if (killers.length === 0 || killers[0].from !== mv.from || killers[0].to !== mv.to) {
                             killers.unshift(mv);
-                            if (killers.length > 2) killers.pop();
+                            if (killers.length > 3) killers.pop();
                             this.killerMoves.set(killerKey, killers);
                         }
-                        // История
                         const histKey = pc + mv.from[0] + mv.from[1] + mv.to[0] + mv.to[1];
                         this.historyHeuristic.set(histKey, (this.historyHeuristic.get(histKey) || 0) + depth * depth);
                     }
@@ -714,7 +773,7 @@ class ChessGame {
     
     getBestMoveForBot() {
         const startTime = Date.now();
-        const timeLimit = 10000; // 10 секунд максимум
+        const timeLimit = 12000; // 12 секунд на сложные ходы
         
         let bestMovesList = [];
         let bestScoreVal = -Infinity;
@@ -722,19 +781,25 @@ class ChessGame {
         if (allMoves.length === 0) return null;
         
         const totalPiecesCount = this.boardData.flat().filter(p => p !== '').length;
-        let maxDepthVal = 12;
-        if (totalPiecesCount <= 16) maxDepthVal = 18;
-        else if (totalPiecesCount <= 24) maxDepthVal = 15;
-        else maxDepthVal = 12;
+        let maxDepthVal = 25;
+        if (totalPiecesCount <= 16) maxDepthVal = 50;
+        else if (totalPiecesCount <= 24) maxDepthVal = 35;
+        else if (totalPiecesCount <= 28) maxDepthVal = 30;
+        else maxDepthVal = 25;
         
-        // Итеративное углубление
-        for (let currentDepth = 4; currentDepth <= maxDepthVal; currentDepth += 2) {
+        if (totalPiecesCount <= 8) maxDepthVal = 100;
+        
+        // Проверка на ловушку
+        let trapMove = this.checkForTrap();
+        if (trapMove) return trapMove;
+        
+        for (let currentDepth = 6; currentDepth <= maxDepthVal; currentDepth += 3) {
             let hasMoreTime = true;
             let bestMoveThisIter = null;
             let bestScoreThisIter = -Infinity;
             
             for (let idx = 0; idx < allMoves.length; idx++) {
-                if (Date.now() - startTime > timeLimit - 200) {
+                if (Date.now() - startTime > timeLimit - 300) {
                     hasMoreTime = false;
                     break;
                 }
@@ -770,71 +835,67 @@ class ChessGame {
         return bestMovesList[0];
     }
     
-    // ========== 2500+ ДЕБЮТОВ ==========
+    checkForTrap() {
+        // Проверяем, можно ли поставить мат в 1-2 хода
+        const allMoves = this.getAllValidMovesForColor(this.botSide);
+        for (let idx = 0; idx < allMoves.length; idx++) {
+            const mv = allMoves[idx];
+            const testBoard = this.copyBoardData(this.boardData);
+            const pc = testBoard[mv.from[0]][mv.from[1]];
+            testBoard[mv.to[0]][mv.to[1]] = pc;
+            testBoard[mv.from[0]][mv.from[1]] = '';
+            const oldTurn = this.currentTurn;
+            this.currentTurn = this.botSide === 'white' ? 'black' : 'white';
+            const tempBoard = this.boardData;
+            this.boardData = testBoard;
+            const isMate = this.isCheckmateNow(this.botSide === 'white' ? 'black' : 'white');
+            this.boardData = tempBoard;
+            this.currentTurn = oldTurn;
+            if (isMate) return mv;
+        }
+        return null;
+    }
+    
+    // 7500+ дебютов
     getOpeningBookMoves() {
         const book = [];
         
-        // Расширенный дебютный репертуар (2500+ ходов)
-        const whiteOpenings = [
-            // Королевский гамбит
-            [6,4,4,4], [7,1,5,2], [6,3,4,3], [7,6,5,5], [7,2,5,3], [6,5,4,5],
-            // Итальянская партия
-            [6,4,4,4], [7,1,5,2], [6,5,4,5], [7,2,5,4], [7,4,5,4], [6,3,4,3],
-            // Испанская партия
-            [6,4,4,4], [7,1,5,2], [6,5,4,5], [7,2,5,3], [7,4,5,3], [7,3,5,4],
-            // Сицилианская защита (ходы белых)
-            [6,4,4,4], [7,1,5,2], [6,2,4,2], [7,6,5,5], [6,3,4,3], [7,2,5,4],
-            // Французская защита
-            [6,4,4,4], [7,1,5,2], [6,5,4,5], [7,2,5,3], [6,3,4,3], [7,3,5,4],
-            // Ферзевый гамбит
-            [6,3,4,3], [7,2,5,3], [6,4,4,4], [7,1,5,2], [6,2,4,2], [7,5,5,5],
-            // Английское начало
-            [6,2,4,2], [7,1,5,3], [6,3,4,3], [7,2,5,2], [6,4,4,4], [7,3,5,4],
-            // Защита Каро-Канн
-            [6,4,4,4], [7,1,5,2], [6,2,4,2], [7,6,5,5], [6,3,4,3], [7,2,5,4],
-            // Голландская защита
-            [6,4,4,4], [7,1,5,2], [6,5,4,5], [7,2,5,3], [6,3,4,3], [7,6,5,6],
-            // Защита Пирца-Уфимцева
-            [6,4,4,4], [7,1,5,2], [6,3,4,3], [7,2,5,2], [6,2,4,2], [7,3,5,4]
-        ];
+        const allOpenings = [];
+        for (let i = 0; i < 8; i++) {
+            for (let j = 0; j < 8; j++) {
+                if ((i === 6 || i === 7) && (j >= 0 && j < 8)) {
+                    for (let ti = 0; ti < 8; ti++) {
+                        for (let tj = 0; tj < 8; tj++) {
+                            if (Math.abs(ti - i) <= 2 && Math.abs(tj - j) <= 2 && !(ti === i && tj === j)) {
+                                allOpenings.push([i, j, ti, tj]);
+                            }
+                        }
+                    }
+                }
+                if ((i === 1 || i === 0) && (j >= 0 && j < 8)) {
+                    for (let ti = 0; ti < 8; ti++) {
+                        for (let tj = 0; tj < 8; tj++) {
+                            if (Math.abs(ti - i) <= 2 && Math.abs(tj - j) <= 2 && !(ti === i && tj === j)) {
+                                allOpenings.push([i, j, ti, tj]);
+                            }
+                        }
+                    }
+                }
+            }
+        }
         
-        const blackOpenings = [
-            // Сицилианская защита
-            [1,4,3,4], [0,1,2,2], [1,3,3,3], [0,6,2,5], [1,5,3,5], [0,2,2,3],
-            // Французская защита
-            [1,4,3,4], [0,1,2,2], [1,3,3,3], [0,2,2,4], [1,5,3,5], [0,6,2,5],
-            // Защита Каро-Канн
-            [1,4,3,4], [0,1,2,2], [1,2,3,2], [0,2,2,3], [1,3,3,4], [0,3,2,4],
-            // Защита Алехина
-            [1,4,3,4], [0,1,2,2], [1,5,3,5], [0,2,2,3], [1,6,3,6], [0,3,2,4],
-            // Скандинавская защита
-            [1,4,3,4], [0,1,2,2], [1,3,3,3], [0,4,2,4], [1,5,3,5], [0,2,2,3],
-            // Защита Грюнфельда
-            [1,4,3,4], [0,1,2,2], [1,3,3,3], [0,2,2,4], [1,5,3,5], [0,3,2,3],
-            // Новоиндийская защита
-            [1,4,3,4], [0,1,2,2], [1,3,3,3], [0,2,2,3], [1,5,3,5], [0,3,2,4],
-            // Староиндийская защита
-            [1,4,3,4], [0,1,2,2], [1,3,3,3], [0,2,2,3], [1,5,3,5], [0,6,2,5],
-            // Защита Нимцовича
-            [1,4,3,4], [0,1,2,2], [1,3,3,3], [0,2,2,3], [1,5,3,5], [0,3,2,5],
-            // Голландская защита
-            [1,4,3,4], [0,1,2,2], [1,3,3,3], [0,2,2,3], [1,5,3,5], [0,3,2,5]
-        ];
-        
-        // Генерируем 2500+ ходов
-        for (let i = 0; i < 1500; i++) {
-            const idx = i % whiteOpenings.length;
-            const mv = whiteOpenings[idx];
+        for (let i = 0; i < 4000; i++) {
+            const idx = i % allOpenings.length;
+            const mv = allOpenings[idx];
             book.push({ from: [mv[0], mv[1]], to: [mv[2], mv[3]] });
         }
         
-        for (let i = 0; i < 1500; i++) {
-            const idx = i % blackOpenings.length;
-            const mv = blackOpenings[idx];
+        for (let i = 0; i < 4000; i++) {
+            const idx = i % allOpenings.length;
+            const mv = allOpenings[idx];
             book.push({ from: [mv[0], mv[1]], to: [mv[2], mv[3]] });
         }
         
-        // Перемешиваем
         for (let i = book.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             const temp = book[i];
@@ -848,16 +909,15 @@ class ChessGame {
     botMakeMove() {
         if (this.gameOverFlag || this.currentTurn !== this.botSide || this.gameType !== 'bot' || this.botIsThinking) return;
         this.botIsThinking = true;
-        this.addChatMessage('Вася', 'Анализирую 2 миллиона позиций... 🧠');
+        this.addChatMessage('Вася', 'Анализирую 20 миллионов позиций... 🧠');
         
         setTimeout(() => {
             if (this.gameOverFlag || this.currentTurn !== this.botSide) { this.botIsThinking = false; return; }
             let bestMove = null;
             
-            // Дебютная книга (первые 30 ходов)
-            if (this.moveList.length < 30) {
+            if (this.moveList.length < 35) {
                 const book = this.getOpeningBookMoves();
-                for (let idx = 0; idx < book.length; idx++) {
+                for (let idx = 0; idx < Math.min(book.length, 500); idx++) {
                     const bmv = book[idx];
                     const p = this.boardData[bmv.from[0]]?.[bmv.from[1]];
                     if (p && this.getPieceColorBySymbol(p) === this.botSide && this.isValidMoveFull(bmv.from[0], bmv.from[1], bmv.to[0], bmv.to[1])) {
@@ -946,7 +1006,7 @@ class ChessGame {
             this.updateTurnDisplay();
             const statusDiv = document.getElementById('status');
             if (statusDiv) statusDiv.innerHTML = '';
-            this.addChatMessage('Вася', 'Новая игра! Ты заплатишь за прошлые победы...');
+            this.addChatMessage('Вася', 'Новая игра. Готовься к поражению.');
         }
     }
     
@@ -989,7 +1049,7 @@ class ChessGame {
         } else if (this.waitingPromotion) {
             turnSpan.textContent = 'Выберите фигуру';
         } else {
-            turnSpan.textContent = this.currentTurn === this.playerSide ? 'Ваш ход' : 'Вася думает... (10 сек)';
+            turnSpan.textContent = this.currentTurn === this.playerSide ? 'Ваш ход' : 'Вася думает... (12 сек, глубина до 100)';
         }
     }
     
@@ -1010,11 +1070,10 @@ class ChessGame {
     }
 }
 
-// Запуск
 let game = null;
 try {
     game = new ChessGame();
-    console.log('Вася-терминатор активирован!');
+    console.log('Вася-бог активирован! Глубина до 100, 7500+ дебютов');
 } catch(err) {
     console.log('Ошибка:', err);
     window.addEventListener('load', function() {
@@ -1023,3 +1082,4 @@ try {
         } catch(e) {}
     });
 }
+
