@@ -13,6 +13,7 @@ class ChessGame {
         this.promotionCol = null;
         this.promotionColor = null;
         this.gameMode = 'bot';
+        this.botThinking = false;  // ← ФИКС: чтобы бот не зависал
         
         this.initBoard();
         this.render();
@@ -25,29 +26,22 @@ class ChessGame {
     initChat() {
         const input = document.getElementById('chat-input');
         const sendBtn = document.getElementById('chat-send');
-        
-        if (sendBtn) {
-            sendBtn.onclick = () => this.sendMessage();
-        }
-        if (input) {
-            input.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') this.sendMessage();
-            });
-        }
+        if (sendBtn) sendBtn.onclick = () => this.sendMessage();
+        if (input) input.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') this.sendMessage();
+        });
     }
     
     sendMessage() {
         const input = document.getElementById('chat-input');
         const text = input.value.trim();
         if (!text) return;
-        
         this.addMessage('Вы', text);
         input.value = '';
-        
         setTimeout(() => {
             const reply = this.getBotReply(text);
             this.addMessage('Вася', reply);
-        }, 300);
+        }, 200);
     }
     
     getBotReply(msg) {
@@ -62,16 +56,9 @@ class ChessGame {
             'мат': ['Мат! Поздравляю!', 'Красиво!', 'Я сдаюсь...']
         };
         for (const [key, arr] of Object.entries(replies)) {
-            if (lower.includes(key)) {
-                return arr[Math.floor(Math.random() * arr.length)];
-            }
+            if (lower.includes(key)) return arr[Math.floor(Math.random() * arr.length)];
         }
-        const defaults = [
-            'Интересный ход! ♟️',
-            'Думаю... 🤔',
-            'Неплохо!',
-            'Хороший ход!'
-        ];
+        const defaults = ['Интересный ход! ♟️', 'Думаю... 🤔', 'Неплохо!', 'Хороший ход!'];
         return defaults[Math.floor(Math.random() * defaults.length)];
     }
     
@@ -196,8 +183,7 @@ class ChessGame {
             if (adr !== adc) return false;
             const rStep = dr > 0 ? 1 : -1;
             const cStep = dc > 0 ? 1 : -1;
-            let r = row + rStep;
-            let c = col + cStep;
+            let r = row + rStep, c = col + cStep;
             while (r !== tr && c !== tc) {
                 if (this.board[r][c]) return false;
                 r += rStep;
@@ -218,8 +204,7 @@ class ChessGame {
                 } else {
                     const rStep = dr > 0 ? 1 : -1;
                     const cStep = dc > 0 ? 1 : -1;
-                    let r = row + rStep;
-                    let c = col + cStep;
+                    let r = row + rStep, c = col + cStep;
                     while (r !== tr && c !== tc) {
                         if (this.board[r][c]) return false;
                         r += rStep;
@@ -234,11 +219,9 @@ class ChessGame {
         // Король
         if (piece === '♔' || piece === '♚') {
             if (adr <= 1 && adc <= 1) return true;
-            // Рокировка
             if (dr === 0 && adc === 2) {
                 const rookCol = dc > 0 ? 7 : 0;
-                const rookRow = row;
-                const rook = this.board[rookRow][rookCol];
+                const rook = this.board[row][rookCol];
                 if (rook !== (piece === '♔' ? '♖' : '♜')) return false;
                 const step = dc > 0 ? 1 : -1;
                 for (let c = col + step; c !== rookCol; c += step) {
@@ -268,88 +251,9 @@ class ChessGame {
             for (let j = 0; j < 8; j++) {
                 const p = this.board[i][j];
                 if (p && this.getPieceColor(p) === opp) {
-                    if (this.isValidMoveWithoutCheck(i, j, kingRow, kingCol)) {
-                        return true;
-                    }
+                    if (this.isValidMove(i, j, kingRow, kingCol)) return true;
                 }
             }
-        }
-        return false;
-    }
-    
-    isValidMoveWithoutCheck(row, col, tr, tc) {
-        const piece = this.board[row][col];
-        if (!piece) return false;
-        const targetPiece = this.board[tr][tc];
-        if (targetPiece && this.getPieceColor(targetPiece) === this.getPieceColor(piece)) return false;
-        
-        const dr = tr - row;
-        const dc = tc - col;
-        const adr = Math.abs(dr);
-        const adc = Math.abs(dc);
-        
-        if (piece === '♙') {
-            if (dc === 0 && dr === -1 && !targetPiece) return true;
-            if (adc === 1 && dr === -1 && targetPiece && this.getPieceColor(targetPiece) === 'black') return true;
-            return false;
-        }
-        if (piece === '♟') {
-            if (dc === 0 && dr === 1 && !targetPiece) return true;
-            if (adc === 1 && dr === 1 && targetPiece && this.getPieceColor(targetPiece) === 'white') return true;
-            return false;
-        }
-        if (piece === '♖' || piece === '♜') {
-            if (row !== tr && col !== tc) return false;
-            if (row === tr) {
-                const step = tc > col ? 1 : -1;
-                for (let c = col + step; c !== tc; c += step) if (this.board[row][c]) return false;
-            } else {
-                const step = tr > row ? 1 : -1;
-                for (let r = row + step; r !== tr; r += step) if (this.board[r][col]) return false;
-            }
-            return true;
-        }
-        if (piece === '♘' || piece === '♞') {
-            return (adr === 2 && adc === 1) || (adr === 1 && adc === 2);
-        }
-        if (piece === '♗' || piece === '♝') {
-            if (adr !== adc) return false;
-            const rStep = dr > 0 ? 1 : -1;
-            const cStep = dc > 0 ? 1 : -1;
-            let r = row + rStep;
-            let c = col + cStep;
-            while (r !== tr && c !== tc) {
-                if (this.board[r][c]) return false;
-                r += rStep;
-                c += cStep;
-            }
-            return true;
-        }
-        if (piece === '♕' || piece === '♛') {
-            if (row === tr || col === tc || adr === adc) {
-                if (row === tr) {
-                    const step = tc > col ? 1 : -1;
-                    for (let c = col + step; c !== tc; c += step) if (this.board[row][c]) return false;
-                } else if (col === tc) {
-                    const step = tr > row ? 1 : -1;
-                    for (let r = row + step; r !== tr; r += step) if (this.board[r][col]) return false;
-                } else {
-                    const rStep = dr > 0 ? 1 : -1;
-                    const cStep = dc > 0 ? 1 : -1;
-                    let r = row + rStep;
-                    let c = col + cStep;
-                    while (r !== tr && c !== tc) {
-                        if (this.board[r][c]) return false;
-                        r += rStep;
-                        c += cStep;
-                    }
-                }
-                return true;
-            }
-            return false;
-        }
-        if (piece === '♔' || piece === '♚') {
-            return adr <= 1 && adc <= 1;
         }
         return false;
     }
@@ -408,11 +312,6 @@ class ChessGame {
             this.addMessage('Вася', this.winner === this.botColor ? 'Я победил! ♟️' : 'Ты победил! Поздравляю!');
         } else if (this.isCheck(this.currentTurn)) {
             document.getElementById('status').innerHTML = `${this.currentTurn === 'white' ? 'Белым' : 'Чёрным'} ШАХ! 🎯`;
-            if (this.currentTurn === this.botColor) {
-                this.addMessage('Вася', 'ШАХ! Защищаюсь! 👑');
-            } else {
-                this.addMessage('Вася', 'ШАХ! Попробуй уйти!');
-            }
         } else if (this.isStalemate(this.currentTurn)) {
             this.gameOver = true;
             document.getElementById('status').innerHTML = 'Пат! Ничья!';
@@ -465,12 +364,24 @@ class ChessGame {
         return true;
     }
     
+    // ← ФИКС: бот больше не зависает
     botMove() {
-        if (this.gameOver || this.waitingForPromotion || this.currentTurn !== this.botColor || this.gameMode !== 'bot') return;
+        if (this.gameOver) return;
+        if (this.currentTurn !== this.botColor) return;
+        if (this.gameMode !== 'bot') return;
+        if (this.botThinking) return;
+        
+        this.botThinking = true;
         
         setTimeout(() => {
-            const moves = this.getAllValidMoves(this.botColor);
+            if (this.gameOver || this.currentTurn !== this.botColor) {
+                this.botThinking = false;
+                return;
+            }
+            
+            let moves = this.getAllValidMoves(this.botColor);
             if (moves.length === 0) {
+                this.botThinking = false;
                 this.checkGameEnd();
                 return;
             }
@@ -485,47 +396,35 @@ class ChessGame {
                     const [tr, tc] = move.to;
                     const piece = this.board[row][col];
                     const target = this.board[tr][tc];
+                    
                     this.board[tr][tc] = piece;
                     this.board[row][col] = '';
-                    const still = this.isCheck(this.botColor);
+                    const stillInCheck = this.isCheck(this.botColor);
                     this.board[row][col] = piece;
                     this.board[tr][tc] = target;
-                    if (!still) safeMoves.push(move);
+                    
+                    if (!stillInCheck) safeMoves.push(move);
                 }
             }
             
             if (safeMoves.length === 0) {
+                this.botThinking = false;
                 this.checkGameEnd();
                 return;
             }
             
-            const pieceVal = { '♙':1, '♟':1, '♘':3, '♞':3, '♗':3, '♝':3, '♖':5, '♜':5, '♕':9, '♛':9 };
-            let best = null;
-            let bestScore = -Infinity;
+            // Быстрый случайный выбор (без зависаний)
+            const randomIndex = Math.floor(Math.random() * safeMoves.length);
+            const move = safeMoves[randomIndex];
+            const [row, col] = move.from;
+            const [tr, tc] = move.to;
             
-            for (const move of safeMoves) {
-                const [row, col] = move.from;
-                const [tr, tc] = move.to;
-                const target = this.board[tr][tc];
-                let score = 0;
-                if (target) score += pieceVal[target] * 10;
-                const center = Math.abs(tr - 3.5) + Math.abs(tc - 3.5);
-                score += (7 - center) * 0.5;
-                score += Math.random() * 1;
-                if (score > bestScore) {
-                    bestScore = score;
-                    best = move;
-                }
-            }
+            this.applyMove(row, col, tr, tc);
+            this.render();
+            this.updateUI();
             
-            if (best) {
-                const [row, col] = best.from;
-                const [tr, tc] = best.to;
-                this.applyMove(row, col, tr, tc);
-                this.render();
-                this.updateUI();
-            }
-        }, 50);
+            this.botThinking = false;
+        }, 30);
     }
     
     handleCellClick(row, col) {
@@ -565,7 +464,8 @@ class ChessGame {
         }
     }
     
-            resetGame() {
+    // ← ФИКС: кнопка "Новая игра" работает
+    resetGame() {
         if (this.gameMode === 'twoPlayer') {
             this.playerColor = null;
             this.botColor = null;
@@ -579,7 +479,6 @@ class ChessGame {
             document.getElementById('status').innerHTML = '';
             this.addMessage('Вася', 'Режим двух игроков! Белые ходят первыми.');
         } else {
-            // Показываем выбор стороны
             const selector = document.getElementById('side-selector');
             if (selector) selector.style.display = 'block';
             this.gameOver = false;
@@ -631,6 +530,8 @@ class ChessGame {
             turnSpan.textContent = this.currentTurn === 'white' ? 'Ход белых' : 'Ход чёрных';
         } else if (!this.playerColor) {
             turnSpan.textContent = 'Выберите сторону';
+        } else if (this.waitingForPromotion) {
+            turnSpan.textContent = 'Выберите фигуру';
         } else {
             turnSpan.textContent = this.currentTurn === this.playerColor ? 'Ваш ход' : 'Вася думает...';
         }
@@ -641,15 +542,15 @@ class ChessGame {
         const white = document.getElementById('side-white');
         const black = document.getElementById('side-black');
         const random = document.getElementById('side-random');
-        const bot = document.getElementById('bot-mode-btn');
-        const two = document.getElementById('two-player-btn');
+        const botMode = document.getElementById('bot-mode-btn');
+        const twoPlayer = document.getElementById('two-player-btn');
         
         if (reset) reset.onclick = () => this.resetGame();
         if (white) white.onclick = () => this.setPlayerSide('white');
         if (black) black.onclick = () => this.setPlayerSide('black');
         if (random) random.onclick = () => this.setPlayerSide('random');
-        if (bot) bot.onclick = () => this.setGameMode('bot');
-        if (two) two.onclick = () => this.setGameMode('twoPlayer');
+        if (botMode) botMode.onclick = () => this.setGameMode('bot');
+        if (twoPlayer) twoPlayer.onclick = () => this.setGameMode('twoPlayer');
     }
 }
 
