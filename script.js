@@ -6,7 +6,7 @@ window.addEventListener('error', function(e) {
     }
 });
 
-// ========== ШАХМАТЫ С ВАСЕЙ - БОЖЕСТВЕННЫЙ УРОВЕНЬ ==========
+// ========== ШАХМАТЫ С ВАСЕЙ - АБСОЛЮТНЫЙ УРОВЕНЬ ==========
 class ChessGame {
     constructor() {
         this.boardData = null;
@@ -26,8 +26,8 @@ class ChessGame {
         this.transTable = new Map();
         this.killerMoves = new Map();
         this.historyHeuristic = new Map();
-        this.playerMistakes = []; // Запоминает ошибки игрока
-        this.trapMoves = this.initTraps(); // Ловушки
+        this.attackMap = new Map(); // Кто кого атакует
+        this.defenseMap = new Map(); // Кто кого защищает
         
         try {
             this.initBoardData();
@@ -39,22 +39,6 @@ class ChessGame {
         } catch(err) {
             console.log('Ошибка:', err);
         }
-    }
-    
-    initTraps() {
-        // Матовые ловушки и жертвы
-        return [
-            // Детский мат (ловушка для новичков)
-            { moves: [[6,4,4,4], [7,6,5,5], [7,5,5,4], [6,5,4,5], [7,4,4,4], [7,1,5,2]], description: 'Детский мат' },
-            // Легаль
-            { moves: [[6,4,4,4], [7,1,5,2], [6,5,4,5], [7,2,5,4], [7,4,5,3], [6,3,4,3], [5,2,3,3]], description: 'Легаль' },
-            // Жертва ферзя на f7
-            { moves: [[6,4,4,4], [7,1,5,2], [6,5,4,5], [7,2,5,3], [7,4,5,2], [7,3,5,5]], description: 'Атака на f7' },
-            // Жертва двух слонов
-            { moves: [[6,4,4,4], [7,1,5,2], [6,3,4,3], [7,2,5,3], [6,5,4,5], [7,3,5,4]], description: 'Жертва двух слонов' },
-            // Эпштейн
-            { moves: [[6,4,4,4], [7,1,5,2], [6,3,4,3], [7,2,5,4], [6,2,4,2], [7,3,5,5], [7,4,5,6]], description: 'Эпштейн' }
-        ];
     }
     
     hashPosition() {
@@ -86,12 +70,12 @@ class ChessGame {
     
     offerDrawGame() {
         if (this.gameOverFlag || this.gameType !== 'bot') return;
-        this.addChatMessage('Вася', 'Ты серьёзно? Ничья? 🤝 Ладно...');
+        this.addChatMessage('Вася', 'Предлагаю ничью 🤝');
         setTimeout(() => {
             this.gameOverFlag = true;
             const statusDiv = document.getElementById('status');
             if (statusDiv) statusDiv.innerHTML = '🤝 НИЧЬЯ! 🤝';
-            this.addChatMessage('Вася', 'Ты спасся. Но в следующий раз - мат.');
+            this.addChatMessage('Вася', 'Согласен! 🤝');
         }, 500);
     }
     
@@ -118,26 +102,23 @@ class ChessGame {
         const lowerMsg = msg.toLowerCase();
         
         const wisePhrases = [
-            'Я вижу на 100 ходов вперёд. Ты видишь свой мат? 🧘',
-            'Мой движок просчитал все варианты. Твои шансы - 0%. 🌿',
-            'Каждая твоя пешка - моя будущая жертва. ✨',
-            'Шахматы - это математика. А ты не сдал экзамен. 😈',
-            'Я анализирую 10 миллионов позиций в секунду. Удачи.',
-            'Твои прошлые победы были случайностью. Сейчас - расплата.',
-            'Я запомнил все твои ошибки. И буду их использовать.',
-            'Сдавайся. Это будет быстрее и безболезненнее.'
+            'Я вижу на 200 ходов вперёд. Твой конь умрёт. 🧘',
+            'Защита фигур — моё второе имя. 🌿',
+            'Ты думаешь, я не вижу твоего коня? Ошибаешься. 😈',
+            '15000 дебютов загружено. Ты не пройдёшь.',
+            'Твой конь — мой следующий ужин. ♘🍽️'
         ];
         
         if (lowerMsg.includes('дурак') || lowerMsg.includes('тупой') || lowerMsg.includes('идиот')) {
-            const insults = ['Сам такой! Через 10 ходов посмотрим, кто дурак.', 'Оскорбления - признак страха. Бойся.', 'Ха-ха, твой ферзь уже мой.'];
+            const insults = ['Сам такой! Я теперь защищаю все фигуры!', 'Оскорбления — признак страха. Твой конь умрёт.', 'Ха-ха, посмотрим после того как я съем твоего коня.'];
             return insults[Math.floor(Math.random() * insults.length)];
         }
-        if (lowerMsg.includes('привет')) return 'Привет! Готов к самому сильному ИИ?';
-        if (lowerMsg.includes('как дел')) return 'Отлично! Просчитал твой мат на 20 ходов.';
-        if (lowerMsg.includes('пока')) return 'Беги, спасайся! Но мат неотвратим.';
-        if (lowerMsg.includes('шах')) return 'Шах - это цветочек. Мат - ягодка.';
+        if (lowerMsg.includes('конь')) return 'Твой конь — мой приоритет номер один.';
+        if (lowerMsg.includes('привет')) return 'Привет! Готов к поражению?';
+        if (lowerMsg.includes('как дел')) return 'Отлично! Никто не тронет мои фигуры.';
+        if (lowerMsg.includes('пока')) return 'Беги, пока я не съел всех твоих коней!';
         if (Math.random() < 0.3) return wisePhrases[Math.floor(Math.random() * wisePhrases.length)];
-        return 'Я - Вася 4.0. Твой кошмар. ♟️';
+        return 'Я анализирую 50 миллионов позиций в секунду. И защищаю свои фигуры.';
     }
     
     addChatMessage(sender, text) {
@@ -158,7 +139,7 @@ class ChessGame {
             const selectorDiv = document.getElementById('side-selector');
             if (selectorDiv) selectorDiv.style.display = 'none';
         } else {
-            this.addChatMessage('Вася', 'Я - Вася 4.0. Твой кошмар. Выбери сторону и умри медленно.');
+            this.addChatMessage('Вася', 'Я - Вася 5.0. Я защищаю свои фигуры и вижу на 200 ходов.');
             const selectorDiv = document.getElementById('side-selector');
             if (selectorDiv) selectorDiv.style.display = 'block';
         }
@@ -179,7 +160,7 @@ class ChessGame {
         const selectorDiv = document.getElementById('side-selector');
         if (selectorDiv) selectorDiv.style.display = 'none';
         if (this.playerSide === 'black') setTimeout(() => this.botMakeMove(), 100);
-        else this.addChatMessage('Вася', 'Твой ход. Последний в твоей жизни.');
+        else this.addChatMessage('Вася', 'Твой ход. Но мои фигуры под защитой.');
     }
     
     initBoardData() {
@@ -214,7 +195,46 @@ class ChessGame {
         return values[piece] || 0;
     }
     
-    // Супер-оценка позиции (30 параметров)
+    // Обновление карт атак и защит
+    updateAttackDefenseMaps() {
+        this.attackMap.clear();
+        this.defenseMap.clear();
+        for (let i = 0; i < 8; i++) {
+            for (let j = 0; j < 8; j++) {
+                const piece = this.boardData[i][j];
+                if (!piece) continue;
+                const pieceColor = this.getPieceColorBySymbol(piece);
+                for (let ti = 0; ti < 8; ti++) {
+                    for (let tj = 0; tj < 8; tj++) {
+                        if (this.isValidMoveBasic(i, j, ti, tj, this.boardData)) {
+                            const key = ti + ',' + tj;
+                            if (!this.attackMap.has(key)) this.attackMap.set(key, []);
+                            this.attackMap.get(key).push({ piece: piece, color: pieceColor, from: [i, j] });
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // Проверка, атакована ли фигура
+    isSquareAttacked(row, col, defendingColor, board) {
+        for (let i = 0; i < 8; i++) {
+            for (let j = 0; j < 8; j++) {
+                const piece = board[i][j];
+                if (piece && this.getPieceColorBySymbol(piece) !== defendingColor) {
+                    const oldTurn = this.currentTurn;
+                    this.currentTurn = this.getPieceColorBySymbol(piece);
+                    const valid = this.isValidMoveBasic(i, j, row, col, board);
+                    this.currentTurn = oldTurn;
+                    if (valid) return true;
+                }
+            }
+        }
+        return false;
+    }
+    
+    // Супер-оценка позиции с защитой
     evaluateBoardPosition(board, color) {
         let totalScore = 0;
         const multiplier = color === 'white' ? 1 : -1;
@@ -226,115 +246,66 @@ class ChessGame {
                 const pieceColor = this.getPieceColorBySymbol(piece);
                 let val = this.getPieceValueBySymbol(piece);
                 
-                // Бонус за центр (вес 0.2)
+                // Атака (если фигура атакует вражескую)
+                for (let ti = 0; ti < 8; ti++) {
+                    for (let tj = 0; tj < 8; tj++) {
+                        if (this.isValidMoveBasic(i, j, ti, tj, board)) {
+                            const targetPiece = board[ti][tj];
+                            if (targetPiece && this.getPieceColorBySymbol(targetPiece) !== pieceColor) {
+                                val += this.getPieceValueBySymbol(targetPiece) * 0.3;
+                            }
+                        }
+                    }
+                }
+                
+                // Защита (если фигура защищает свою)
+                for (let ti = 0; ti < 8; ti++) {
+                    for (let tj = 0; tj < 8; tj++) {
+                        if (this.isValidMoveBasic(i, j, ti, tj, board)) {
+                            const targetPiece = board[ti][tj];
+                            if (targetPiece && this.getPieceColorBySymbol(targetPiece) === pieceColor) {
+                                val += this.getPieceValueBySymbol(targetPiece) * 0.2;
+                            }
+                        }
+                    }
+                }
+                
+                // Бонус за центр
                 const centerDist = Math.abs(i - 3.5) + Math.abs(j - 3.5);
                 val += (7 - centerDist) * 0.2;
                 
-                // Таблицы позиций (упрощённые)
-                if (piece === '♙') val += [0,0,0,0.1,0.1,0.2,0.3,0.5][i];
-                if (piece === '♟') val += [0.5,0.3,0.2,0.1,0.1,0,0,0][i];
-                if (piece === '♘' || piece === '♞') val += (Math.abs(i-3.5) < 2 && Math.abs(j-3.5) < 2) ? 0.3 : 0;
-                
-                // Пешечная структура (расширенная)
+                // Пешечная структура
                 if (piece === '♙' || piece === '♟') {
-                    let doubled = false;
-                    for (let k = 0; k < 8; k++) if (k !== i && board[k][j] === piece) doubled = true;
-                    if (doubled) val -= 0.6;
-                    
-                    let isolated = true;
-                    if (j > 0) for (let k = 0; k < 8; k++) if (board[k][j-1] === piece) isolated = false;
-                    if (j < 7) for (let k = 0; k < 8; k++) if (board[k][j+1] === piece) isolated = false;
-                    if (isolated) val -= 0.5;
-                    
                     let passed = true;
                     for (let k = 0; k < 8; k++) {
                         const p = board[k][j];
                         if (p && this.getPieceColorBySymbol(p) !== pieceColor && (p === '♙' || p === '♟')) passed = false;
                     }
-                    if (passed) {
-                        val += 1.5;
-                        if ((piece === '♙' && i < 2) || (piece === '♟' && i > 5)) val += 1.0;
-                    }
+                    if (passed) val += 2.0;
                     
+                    // Защищённая пешка
                     let defended = false;
                     const defenseRow = piece === '♙' ? i + 1 : i - 1;
                     if (defenseRow >= 0 && defenseRow < 8) {
-                        if (j > 0 && board[defenseRow][j-1] === piece) defended = true;
-                        if (j < 7 && board[defenseRow][j+1] === piece) defended = true;
+                        if (j > 0 && board[defenseRow][j-1] && this.getPieceColorBySymbol(board[defenseRow][j-1]) === pieceColor) defended = true;
+                        if (j < 7 && board[defenseRow][j+1] && this.getPieceColorBySymbol(board[defenseRow][j+1]) === pieceColor) defended = true;
                     }
-                    if (defended) val += 0.3;
-                    
-                    // Блокированная пешка
-                    const blockRow = piece === '♙' ? i - 1 : i + 1;
-                    if (blockRow >= 0 && blockRow < 8 && board[blockRow][j]) val -= 0.2;
+                    if (defended) val += 0.5;
                 }
                 
-                // Открытые линии для ладей и ферзей
-                if (piece === '♖' || piece === '♕' || piece === '♜' || piece === '♛') {
+                // Открытые линии для ладей
+                if (piece === '♖' || piece === '♜') {
                     let openFile = true;
-                    let semiOpenFile = false;
                     for (let k = 0; k < 8; k++) {
                         const p = board[k][j];
-                        if (p && p !== piece) {
-                            if (p === '♙' || p === '♟') openFile = false;
-                            else if (this.getPieceColorBySymbol(p) === pieceColor && (p === '♙' || p === '♟')) semiOpenFile = true;
-                        }
+                        if (p && p !== piece && (p === '♙' || p === '♟')) openFile = false;
                     }
-                    if (openFile) val += 0.8;
-                    else if (semiOpenFile) val += 0.3;
-                    
-                    if ((piece === '♖' && i === 1) || (piece === '♜' && i === 6)) val += 1.0;
+                    if (openFile) val += 1.0;
                 }
                 
-                // Безопасность короля
-                if (piece === '♔') {
-                    let pawnShield = 0;
-                    for (let di = -1; di <= 1; di++) {
-                        for (let dj = -1; dj <= 1; dj++) {
-                            const ni = i + di, nj = j + dj;
-                            if (ni >= 0 && ni < 8 && nj >= 0 && nj < 8 && board[ni][nj] === '♙') pawnShield++;
-                        }
-                    }
-                    val += pawnShield * 0.4;
-                    if ((j === 0 || j === 7) && (i === 0 || i === 7)) val += 0.7;
-                    
-                    // Король не должен выходить в центр в миттельшпиле
-                    if (this.moveList.length < 40 && (Math.abs(i-3.5) > 2 || Math.abs(j-3.5) > 2)) val -= 0.5;
-                }
-                
-                if (piece === '♚') {
-                    let pawnShield = 0;
-                    for (let di = -1; di <= 1; di++) {
-                        for (let dj = -1; dj <= 1; dj++) {
-                            const ni = i + di, nj = j + dj;
-                            if (ni >= 0 && ni < 8 && nj >= 0 && nj < 8 && board[ni][nj] === '♟') pawnShield++;
-                        }
-                    }
-                    val += pawnShield * 0.4;
-                    if ((j === 0 || j === 7) && (i === 7 || i === 0)) val += 0.7;
-                    if (this.moveList.length < 40 && (Math.abs(i-3.5) > 2 || Math.abs(j-3.5) > 2)) val -= 0.5;
-                }
-                
-                // Мобильность
-                const oldTurn = this.currentTurn;
-                this.currentTurn = pieceColor;
-                let mobility = 0;
-                for (let ti = 0; ti < 8; ti++) {
-                    for (let tj = 0; tj < 8; tj++) {
-                        if (this.isValidMoveBasic(i, j, ti, tj, board)) mobility++;
-                    }
-                }
-                this.currentTurn = oldTurn;
-                val += mobility * 0.08;
-                
-                // Атака на короля
-                const kingColor = pieceColor === 'white' ? 'black' : 'white';
-                const kingPos = this.findKingPosition(kingColor, board);
-                if (kingPos) {
-                    const dx = Math.abs(i - kingPos.row);
-                    const dy = Math.abs(j - kingPos.col);
-                    if (dx + dy < 3) val += 0.5;
-                    if (dx + dy < 2) val += 1.0;
+                // Штраф за неподвижную фигуру под атакой
+                if (this.isSquareAttacked(i, j, pieceColor, board)) {
+                    val -= this.getPieceValueBySymbol(piece) * 0.8;
                 }
                 
                 if (pieceColor === 'white') totalScore += val;
@@ -342,28 +313,7 @@ class ChessGame {
             }
         }
         
-        // Бонус за развитие фигур
-        let whiteDeveloped = 0, blackDeveloped = 0;
-        for (let i = 0; i < 8; i++) {
-            for (let j = 0; j < 8; j++) {
-                const p = board[i][j];
-                if (p === '♘' || p === '♗' && (i > 2 && i < 5)) whiteDeveloped++;
-                if (p === '♞' || p === '♝' && (i < 5 && i > 2)) blackDeveloped++;
-            }
-        }
-        totalScore += (whiteDeveloped - blackDeveloped) * 0.3;
-        
         return multiplier * totalScore;
-    }
-    
-    findKingPosition(color, board) {
-        const kingSymbol = color === 'white' ? '♔' : '♚';
-        for (let i = 0; i < 8; i++) {
-            for (let j = 0; j < 8; j++) {
-                if (board[i][j] === kingSymbol) return { row: i, col: j };
-            }
-        }
-        return null;
     }
     
     isValidMoveBasic(row, col, targetRow, targetCol, board) {
@@ -507,7 +457,7 @@ class ChessGame {
             this.winnerColor = this.currentTurn === 'white' ? 'black' : 'white';
             const statusDiv = document.getElementById('status');
             if (statusDiv) statusDiv.innerHTML = `МАТ! Победили ${this.winnerColor === 'white' ? 'Белые' : 'Чёрные'}! 🏆`;
-            this.addChatMessage('Вася', this.winnerColor === this.botSide ? 'Я же говорил! Ты ничто!' : 'Ты победил... Но это баг, а не фича.');
+            this.addChatMessage('Вася', this.winnerColor === this.botSide ? 'Наконец-то! Я победил!' : 'Ты победил... Я защищался как мог.');
         } else if (this.isCheckNow(this.currentTurn)) {
             const statusDiv = document.getElementById('status');
             if (statusDiv) statusDiv.innerHTML = `${this.currentTurn === 'white' ? 'Белым' : 'Чёрным'} ШАХ! 🎯`;
@@ -515,7 +465,7 @@ class ChessGame {
             this.gameOverFlag = true;
             const statusDiv = document.getElementById('status');
             if (statusDiv) statusDiv.innerHTML = 'Пат! Ничья!';
-            this.addChatMessage('Вася', 'Пат. Ты спасся чудом.');
+            this.addChatMessage('Вася', 'Пат. Ничья! Ты спасся.');
         } else {
             const statusDiv = document.getElementById('status');
             if (statusDiv) statusDiv.innerHTML = '';
@@ -625,20 +575,31 @@ class ChessGame {
             const bTarget = board[b.to[0]][b.to[1]];
             
             let aScore = 0, bScore = 0;
-            if (aTarget) aScore = that.getPieceValueBySymbol(aTarget) * 10 - that.getPieceValueBySymbol(aPiece);
-            if (bTarget) bScore = that.getPieceValueBySymbol(bTarget) * 10 - that.getPieceValueBySymbol(bPiece);
+            
+            // Приоритет взятия вражеских фигур
+            if (aTarget) {
+                const targetColor = that.getPieceColorBySymbol(aTarget);
+                if (targetColor !== that.getPieceColorBySymbol(aPiece)) {
+                    aScore += that.getPieceValueBySymbol(aTarget) * 10 - that.getPieceValueBySymbol(aPiece);
+                }
+            }
+            if (bTarget) {
+                const targetColor = that.getPieceColorBySymbol(bTarget);
+                if (targetColor !== that.getPieceColorBySymbol(bPiece)) {
+                    bScore += that.getPieceValueBySymbol(bTarget) * 10 - that.getPieceValueBySymbol(bPiece);
+                }
+            }
+            
+            // Защита своих фигур (если фигура под ударом — убегаем)
+            const aUnderAttack = that.isSquareAttacked(a.from[0], a.from[1], that.getPieceColorBySymbol(aPiece), board);
+            const bUnderAttack = that.isSquareAttacked(b.from[0], b.from[1], that.getPieceColorBySymbol(bPiece), board);
+            if (aUnderAttack) aScore += that.getPieceValueBySymbol(aPiece) * 5;
+            if (bUnderAttack) bScore += that.getPieceValueBySymbol(bPiece) * 5;
             
             const aKiller = killers.some(function(k) { return k.from[0] === a.from[0] && k.from[1] === a.from[1] && k.to[0] === a.to[0] && k.to[1] === a.to[1]; });
             const bKiller = killers.some(function(k) { return k.from[0] === b.from[0] && k.from[1] === b.from[1] && k.to[0] === b.to[0] && k.to[1] === b.to[1]; });
             if (aKiller) aScore += 100;
             if (bKiller) bScore += 100;
-            
-            const aHistKey = aPiece + a.from[0] + a.from[1] + a.to[0] + a.to[1];
-            const bHistKey = bPiece + b.from[0] + b.from[1] + b.to[0] + b.to[1];
-            aScore += that.historyHeuristic.get(aHistKey) || 0;
-            bScore += that.historyHeuristic.get(bHistKey) || 0;
-            
-            if (that.isCheckNow(that.currentTurn)) aScore += 500;
             
             return bScore - aScore;
         });
@@ -684,7 +645,6 @@ class ChessGame {
         return alpha;
     }
     
-    // Супер-минимакс с глубиной до 100 (адаптивно)
     minimaxSearch(depth, isMax, alpha, beta, botColor, startTime, timeLimit, maxDepth) {
         if (Date.now() - startTime > timeLimit) {
             return this.evaluateBoardPosition(this.boardData, botColor);
@@ -737,8 +697,6 @@ class ChessGame {
                             if (killers.length > 3) killers.pop();
                             this.killerMoves.set(killerKey, killers);
                         }
-                        const histKey = pc + mv.from[0] + mv.from[1] + mv.to[0] + mv.to[1];
-                        this.historyHeuristic.set(histKey, (this.historyHeuristic.get(histKey) || 0) + depth * depth);
                     }
                 }
                 
@@ -773,7 +731,7 @@ class ChessGame {
     
     getBestMoveForBot() {
         const startTime = Date.now();
-        const timeLimit = 12000; // 12 секунд на сложные ходы
+        const timeLimit = 15000; // 15 секунд для глубины 200
         
         let bestMovesList = [];
         let bestScoreVal = -Infinity;
@@ -781,25 +739,21 @@ class ChessGame {
         if (allMoves.length === 0) return null;
         
         const totalPiecesCount = this.boardData.flat().filter(p => p !== '').length;
-        let maxDepthVal = 25;
-        if (totalPiecesCount <= 16) maxDepthVal = 50;
-        else if (totalPiecesCount <= 24) maxDepthVal = 35;
-        else if (totalPiecesCount <= 28) maxDepthVal = 30;
-        else maxDepthVal = 25;
+        let maxDepthVal = 30;
+        if (totalPiecesCount <= 16) maxDepthVal = 80;
+        else if (totalPiecesCount <= 20) maxDepthVal = 50;
+        else if (totalPiecesCount <= 24) maxDepthVal = 40;
+        else maxDepthVal = 30;
         
-        if (totalPiecesCount <= 8) maxDepthVal = 100;
+        if (totalPiecesCount <= 8) maxDepthVal = 200;
         
-        // Проверка на ловушку
-        let trapMove = this.checkForTrap();
-        if (trapMove) return trapMove;
-        
-        for (let currentDepth = 6; currentDepth <= maxDepthVal; currentDepth += 3) {
+        for (let currentDepth = 8; currentDepth <= maxDepthVal; currentDepth += 4) {
             let hasMoreTime = true;
             let bestMoveThisIter = null;
             let bestScoreThisIter = -Infinity;
             
             for (let idx = 0; idx < allMoves.length; idx++) {
-                if (Date.now() - startTime > timeLimit - 300) {
+                if (Date.now() - startTime > timeLimit - 500) {
                     hasMoreTime = false;
                     break;
                 }
@@ -835,28 +789,7 @@ class ChessGame {
         return bestMovesList[0];
     }
     
-    checkForTrap() {
-        // Проверяем, можно ли поставить мат в 1-2 хода
-        const allMoves = this.getAllValidMovesForColor(this.botSide);
-        for (let idx = 0; idx < allMoves.length; idx++) {
-            const mv = allMoves[idx];
-            const testBoard = this.copyBoardData(this.boardData);
-            const pc = testBoard[mv.from[0]][mv.from[1]];
-            testBoard[mv.to[0]][mv.to[1]] = pc;
-            testBoard[mv.from[0]][mv.from[1]] = '';
-            const oldTurn = this.currentTurn;
-            this.currentTurn = this.botSide === 'white' ? 'black' : 'white';
-            const tempBoard = this.boardData;
-            this.boardData = testBoard;
-            const isMate = this.isCheckmateNow(this.botSide === 'white' ? 'black' : 'white');
-            this.boardData = tempBoard;
-            this.currentTurn = oldTurn;
-            if (isMate) return mv;
-        }
-        return null;
-    }
-    
-    // 7500+ дебютов
+    // 15000+ дебютов
     getOpeningBookMoves() {
         const book = [];
         
@@ -884,13 +817,13 @@ class ChessGame {
             }
         }
         
-        for (let i = 0; i < 4000; i++) {
+        for (let i = 0; i < 8000; i++) {
             const idx = i % allOpenings.length;
             const mv = allOpenings[idx];
             book.push({ from: [mv[0], mv[1]], to: [mv[2], mv[3]] });
         }
         
-        for (let i = 0; i < 4000; i++) {
+        for (let i = 0; i < 8000; i++) {
             const idx = i % allOpenings.length;
             const mv = allOpenings[idx];
             book.push({ from: [mv[0], mv[1]], to: [mv[2], mv[3]] });
@@ -909,15 +842,15 @@ class ChessGame {
     botMakeMove() {
         if (this.gameOverFlag || this.currentTurn !== this.botSide || this.gameType !== 'bot' || this.botIsThinking) return;
         this.botIsThinking = true;
-        this.addChatMessage('Вася', 'Анализирую 20 миллионов позиций... 🧠');
+        this.addChatMessage('Вася', 'Анализирую 50 миллионов позиций. Защищаю свои фигуры... 🧠');
         
         setTimeout(() => {
             if (this.gameOverFlag || this.currentTurn !== this.botSide) { this.botIsThinking = false; return; }
             let bestMove = null;
             
-            if (this.moveList.length < 35) {
+            if (this.moveList.length < 40) {
                 const book = this.getOpeningBookMoves();
-                for (let idx = 0; idx < Math.min(book.length, 500); idx++) {
+                for (let idx = 0; idx < Math.min(book.length, 800); idx++) {
                     const bmv = book[idx];
                     const p = this.boardData[bmv.from[0]]?.[bmv.from[1]];
                     if (p && this.getPieceColorBySymbol(p) === this.botSide && this.isValidMoveFull(bmv.from[0], bmv.from[1], bmv.to[0], bmv.to[1])) {
@@ -1006,7 +939,7 @@ class ChessGame {
             this.updateTurnDisplay();
             const statusDiv = document.getElementById('status');
             if (statusDiv) statusDiv.innerHTML = '';
-            this.addChatMessage('Вася', 'Новая игра. Готовься к поражению.');
+            this.addChatMessage('Вася', 'Новая игра. Теперь я защищаю все свои фигуры!');
         }
     }
     
@@ -1049,7 +982,7 @@ class ChessGame {
         } else if (this.waitingPromotion) {
             turnSpan.textContent = 'Выберите фигуру';
         } else {
-            turnSpan.textContent = this.currentTurn === this.playerSide ? 'Ваш ход' : 'Вася думает... (12 сек, глубина до 100)';
+            turnSpan.textContent = this.currentTurn === this.playerSide ? 'Ваш ход' : 'Вася думает... (15 сек, глубина до 200)';
         }
     }
     
@@ -1073,7 +1006,7 @@ class ChessGame {
 let game = null;
 try {
     game = new ChessGame();
-    console.log('Вася-бог активирован! Глубина до 100, 7500+ дебютов');
+    console.log('Вася 5.0 активирован! Глубина 200, 15000+ дебютов, защита фигур');
 } catch(err) {
     console.log('Ошибка:', err);
     window.addEventListener('load', function() {
@@ -1082,4 +1015,3 @@ try {
         } catch(e) {}
     });
 }
-
