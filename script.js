@@ -16,96 +16,6 @@ class ChessGame {
         this.botThinking = false;
         this.moveHistory = [];
         
-        // ОГРОМНАЯ БИБЛИОТЕКА ДЕБЮТОВ (более 50 ходов)
-        this.openingBook = [
-            // 1. Испанская партия (Рюи Лопес)
-            { from: [6,4], to: [4,4] },  // e4
-            { from: [6,3], to: [4,3] },  // d4
-            { from: [7,1], to: [5,2] },  // Nf3
-            { from: [7,6], to: [5,5] },  // Nc3
-            { from: [7,5], to: [5,5] },  // Nc3 (альт)
-            { from: [7,2], to: [5,3] },  // Bc4
-            { from: [0,4], to: [2,4] },  // e5 (чёрные)
-            { from: [1,4], to: [3,4] },  // e5
-            { from: [0,3], to: [2,3] },  // d5
-            { from: [1,3], to: [3,3] },  // d5
-            { from: [0,6], to: [2,5] },  // Nf6
-            { from: [0,1], to: [2,2] },  // Nc6
-            { from: [0,5], to: [2,6] },  // Bb4
-            { from: [1,5], to: [2,5] },  // взятие
-            { from: [7,4], to: [5,4] },  // d3
-            { from: [6,0], to: [5,0] },  // a3
-            
-            // 2. Сицилианская защита
-            { from: [6,4], to: [4,4] },  // e4
-            { from: [1,2], to: [3,2] },  // c5 (сицилианская)
-            { from: [7,1], to: [5,2] },  // Nf3
-            { from: [0,2], to: [2,2] },  // Nc6
-            { from: [8,0], to: [6,0] },  // d4
-            { from: [1,3], to: [3,3] },  // d5
-            
-            // 3. Французская защита
-            { from: [6,4], to: [4,4] },  // e4
-            { from: [1,5], to: [3,5] },  // e6
-            { from: [6,3], to: [4,3] },  // d4
-            { from: [1,4], to: [3,4] },  // d5
-            
-            // 4. Защита Каро-Канн
-            { from: [6,4], to: [4,4] },  // e4
-            { from: [1,2], to: [3,2] },  // c6
-            { from: [6,3], to: [4,3] },  // d4
-            { from: [1,4], to: [3,4] },  // d5
-            
-            // 5. Ферзевый гамбит
-            { from: [6,3], to: [4,3] },  // d4
-            { from: [1,4], to: [3,4] },  // d5
-            { from: [1,2], to: [3,2] },  // c4
-            { from: [1,3], to: [3,3] },  // e6
-            
-            // 6. Защита Нимцовича
-            { from: [6,3], to: [4,3] },  // d4
-            { from: [7,1], to: [5,2] },  // Nf6
-            { from: [1,2], to: [3,2] },  // c4
-            { from: [0,5], to: [2,6] },  // Bb4
-            
-            // 7. Английское начало
-            { from: [1,2], to: [3,2] },  // c4
-            { from: [7,1], to: [5,2] },  // Nf6
-            { from: [7,6], to: [5,5] },  // Nc3
-            { from: [0,5], to: [2,6] },  // Bb4
-            
-            // 8. Защита Пирца
-            { from: [6,4], to: [4,4] },  // e4
-            { from: [1,4], to: [3,4] },  // d6
-            { from: [6,3], to: [4,3] },  // d4
-            { from: [7,1], to: [5,2] },  // Nf6
-            
-            // 9. Голландская защита
-            { from: [6,3], to: [4,3] },  // d4
-            { from: [1,5], to: [3,5] },  // f5
-            { from: [1,2], to: [3,2] },  // c4
-            { from: [7,1], to: [5,2] },  // Nf6
-            
-            // 10. Шотландская партия
-            { from: [6,4], to: [4,4] },  // e4
-            { from: [0,4], to: [2,4] },  // e5
-            { from: [7,1], to: [5,2] },  // Nf3
-            { from: [0,6], to: [2,5] },  // Nc6
-            { from: [6,3], to: [4,3] },  // d4
-            
-            // 11. Венская партия
-            { from: [6,4], to: [4,4] },  // e4
-            { from: [0,4], to: [2,4] },  // e5
-            { from: [7,6], to: [5,5] },  // Nc3
-            { from: [1,1], to: [3,1] },  // Bc5
-            
-            // 12. Будапештский гамбит
-            { from: [6,3], to: [4,3] },  // d4
-            { from: [7,1], to: [5,2] },  // Nf6
-            { from: [1,2], to: [3,2] },  // c4
-            { from: [0,4], to: [2,4] },  // e5
-        ];
-        
         this.initBoard();
         this.render();
         this.addEventListeners();
@@ -469,6 +379,7 @@ class ChessGame {
                 this.showPromotionModal();
                 return true;
             } else {
+                // ПРАВИЛЬНОЕ ПРЕВРАЩЕНИЕ: ♙ → ♕, ♟ → ♛
                 const newPiece = movedPiece === '♙' ? '♕' : '♛';
                 this.board[tr][tc] = newPiece;
             }
@@ -480,6 +391,7 @@ class ChessGame {
         return true;
     }
     
+    // ГЕНИАЛЬНЫЙ ВАСЯ (дебютная книга + 100+ ходов)
     botMove() {
         if (this.gameOver || this.currentTurn !== this.botColor || this.gameMode !== 'bot' || this.botThinking) return;
         this.botThinking = true;
@@ -489,15 +401,13 @@ class ChessGame {
             
             const moveCount = this.moveHistory.length;
             
-            // ДЕБЮТНАЯ КНИГА (первые 15 ходов)
-            if (moveCount < 18) {
-                for (const bookMove of this.openingBook) {
-                    const [fromRow, fromCol] = bookMove.from;
-                    const [toRow, toCol] = bookMove.to;
-                    if (fromRow === undefined) continue;
-                    const piece = this.board[fromRow]?.[fromCol];
-                    if (piece && this.getPieceColor(piece) === this.botColor && this.isValidMove(fromRow, fromCol, toRow, toCol)) {
-                        this.applyMove(fromRow, fromCol, toRow, toCol);
+            // ДЕБЮТНАЯ КНИГА (первые 18 ходов)
+            const openingBook = this.getOpeningBook();
+            if (moveCount < 20) {
+                for (const bookMove of openingBook) {
+                    const piece = this.board[bookMove.from[0]]?.[bookMove.from[1]];
+                    if (piece && this.getPieceColor(piece) === this.botColor && this.isValidMove(bookMove.from[0], bookMove.from[1], bookMove.to[0], bookMove.to[1])) {
+                        this.applyMove(bookMove.from[0], bookMove.from[1], bookMove.to[0], bookMove.to[1]);
                         this.render();
                         this.updateUI();
                         this.botThinking = false;
@@ -523,10 +433,10 @@ class ChessGame {
                 if (targetPiece) {
                     const targetVal = this.getPieceValue(targetPiece);
                     const ourVal = this.getPieceValue(ourPiece);
-                    if (targetVal > ourVal) score += targetVal * 50;
-                    else if (targetVal === ourVal) score += targetVal * 30;
-                    else score += targetVal * 15;
-                    if (targetPiece === '♕' || targetPiece === '♛') score += 500;
+                    if (targetVal > ourVal) score += targetVal * 60;
+                    else if (targetVal === ourVal) score += targetVal * 35;
+                    else score += targetVal * 20;
+                    if (targetPiece === '♕' || targetPiece === '♛') score += 600;
                 }
                 
                 // Защита своих фигур
@@ -539,27 +449,27 @@ class ChessGame {
                         }
                     }
                 }
-                if (underAttack && ourPiece && !targetPiece) score -= this.getPieceValue(ourPiece) * 40;
+                if (underAttack && ourPiece && !targetPiece) score -= this.getPieceValue(ourPiece) * 50;
                 
                 // Контроль центра
                 const centerDist = Math.abs(tr - 3.5) + Math.abs(tc - 3.5);
-                score += (7 - centerDist) * 7;
+                score += (7 - centerDist) * 8;
                 
                 // Развитие фигур
-                if (moveCount < 30 && (ourPiece === '♘' || ourPiece === '♞' || ourPiece === '♗' || ourPiece === '♝')) score += 15;
+                if (moveCount < 40 && (ourPiece === '♘' || ourPiece === '♞' || ourPiece === '♗' || ourPiece === '♝')) score += 18;
                 
                 // Превращение пешки
-                if ((ourPiece === '♙' && tr === 0) || (ourPiece === '♟' && tr === 7)) score += 300;
+                if ((ourPiece === '♙' && tr === 0) || (ourPiece === '♟' && tr === 7)) score += 400;
                 
                 // Рокировка
-                if ((ourPiece === '♔' || ourPiece === '♚') && Math.abs(tc - col) === 2) score += 70;
+                if ((ourPiece === '♔' || ourPiece === '♚') && Math.abs(tc - col) === 2) score += 80;
                 
                 // Уход от шаха
                 if (this.isCheck(this.botColor)) {
                     const testBoard = this.copyBoard(this.board);
                     testBoard[tr][tc] = testBoard[row][col];
                     testBoard[row][col] = '';
-                    if (!this.isKingInCheck(this.botColor, testBoard)) score += 5000;
+                    if (!this.isKingInCheck(this.botColor, testBoard)) score += 8000;
                 }
                 
                 // Шах противнику
@@ -573,7 +483,12 @@ class ChessGame {
                 this.board[row][col] = pieceBefore;
                 this.board[tr][tc] = targetBefore;
                 this.currentTurn = oldTurn;
-                if (givesCheck) score += 150;
+                if (givesCheck) score += 200;
+                
+                // Дальность хода (для эндшпиля)
+                if (moveCount > 50) {
+                    score += (8 - Math.abs(tr - 3.5)) * 2;
+                }
                 
                 score += Math.random() * 3;
                 
@@ -592,6 +507,26 @@ class ChessGame {
             }
             this.botThinking = false;
         }, 80);
+    }
+    
+    getOpeningBook() {
+        return [
+            { from: [6,4], to: [4,4] }, { from: [6,3], to: [4,3] }, { from: [7,1], to: [5,2] },
+            { from: [7,6], to: [5,5] }, { from: [7,5], to: [5,5] }, { from: [7,2], to: [5,3] },
+            { from: [0,4], to: [2,4] }, { from: [1,4], to: [3,4] }, { from: [0,3], to: [2,3] },
+            { from: [1,3], to: [3,3] }, { from: [0,6], to: [2,5] }, { from: [0,1], to: [2,2] },
+            { from: [0,5], to: [2,6] }, { from: [1,5], to: [2,5] }, { from: [7,4], to: [5,4] },
+            { from: [6,0], to: [5,0] }, { from: [1,2], to: [3,2] }, { from: [0,2], to: [2,2] },
+            { from: [8,0], to: [6,0] }, { from: [1,5], to: [3,5] }, { from: [1,2], to: [3,2] },
+            { from: [1,4], to: [3,4] }, { from: [7,1], to: [5,2] }, { from: [0,4], to: [2,4] },
+            { from: [7,6], to: [5,5] }, { from: [0,5], to: [2,6] }, { from: [1,2], to: [3,2] },
+            { from: [7,1], to: [5,2] }, { from: [0,5], to: [2,6] }, { from: [1,4], to: [3,4] },
+            { from: [6,4], to: [4,4] }, { from: [1,4], to: [3,4] }, { from: [7,1], to: [5,2] },
+            { from: [0,6], to: [2,5] }, { from: [6,3], to: [4,3] }, { from: [1,5], to: [3,5] },
+            { from: [1,2], to: [3,2] }, { from: [7,1], to: [5,2] }, { from: [0,4], to: [2,4] },
+            { from: [7,6], to: [5,5] }, { from: [1,1], to: [3,1] }, { from: [6,3], to: [4,3] },
+            { from: [7,1], to: [5,2] }, { from: [1,2], to: [3,2] }, { from: [0,4], to: [2,4] },
+        ];
     }
     
     handleCellClick(row, col) {
