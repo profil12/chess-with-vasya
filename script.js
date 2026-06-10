@@ -70,18 +70,18 @@ class ChessGame {
     getBotReply(msg) {
         const lower = msg.toLowerCase();
         const replies = {
-            'привет': ['Привет! Я гроссмейстер Вася!', 'Здравствуй!', 'О, привет!'],
-            'как дел': ['Отлично!', 'Хорошо!', 'Нормально!'],
-            'пока': ['Пока!', 'До встречи!', 'Удачи!'],
-            'молодец': ['Спасибо!', 'Приятно!', 'Спасибо!'],
-            'дурак': ['Сам такой!', 'Эй!', 'Обижаешь...'],
-            'шах': ['Шах!', 'Осторожно!', 'Король под ударом!'],
-            'мат': ['Мат!', 'Красиво!', 'Сдавайся!']
+            'привет': ['Привет! Я теперь супер-гроссмейстер!', 'Здравствуй, слабак!', 'О, привет! Бойся!'],
+            'как дел': ['Отлично! А у тебя скоро мат.', 'Хорошо!', 'Нормально, но ты проиграешь.'],
+            'пока': ['Пока! Беги!', 'До встречи!', 'Удачи в следующей партии (но не в этой)!'],
+            'молодец': ['Спасибо! Но ты всё равно проиграешь.', 'Приятно!', 'Спасибо!'],
+            'дурак': ['Сам такой!', 'Эй!', 'Обижаешь... Но мат поставлю!'],
+            'шах': ['Шах! Осторожно!', 'Король под ударом!', 'Шах — это только начало!'],
+            'мат': ['Мат! Ха-ха!', 'Красиво! Сдавайся!', 'Game over!']
         };
         for (const [key, arr] of Object.entries(replies)) {
             if (lower.includes(key)) return arr[Math.floor(Math.random() * arr.length)];
         }
-        const defaults = ['Интересный ход! ♟️', 'Думаю... 🤔', 'Неплохо!', 'Хороший ход!'];
+        const defaults = ['Страшный ход! ♟️', 'Думаю, как тебя уничтожить... 🤔', 'Неплохо, но я лучше!', 'Хороший ход, но ты обречён!'];
         return defaults[Math.floor(Math.random() * defaults.length)];
     }
     
@@ -102,7 +102,7 @@ class ChessGame {
             this.addMessage('Вася', 'Режим двух игроков! Белые ходят первыми.');
             document.getElementById('side-selector').style.display = 'none';
         } else {
-            this.addMessage('Вася', 'Режим игры с ботом. Выбери сторону!');
+            this.addMessage('Вася', 'Режим игры с ботом. Выбери сторону, но будет больно!');
             document.getElementById('side-selector').style.display = 'block';
         }
     }
@@ -121,7 +121,7 @@ class ChessGame {
         this.updateUI();
         document.getElementById('side-selector').style.display = 'none';
         if (this.playerColor === 'black') setTimeout(() => this.botMove(), 100);
-        else this.addMessage('Вася', 'Твой ход! ♟️');
+        else this.addMessage('Вася', 'Твой ход! Но я всё равно выиграю! ♟️');
     }
     
     initBoard() {
@@ -149,7 +149,7 @@ class ChessGame {
     
     getPieceValue(piece) {
         if (!piece) return 0;
-        const values = { '♙':1, '♟':1, '♘':3, '♞':3, '♗':3, '♝':3, '♖':5, '♜':5, '♕':9, '♛':9 };
+        const values = { '♙':1, '♟':1, '♘':3.2, '♞':3.2, '♗':3.3, '♝':3.3, '♖':5, '♜':5, '♕':9, '♛':9, '♔':1000, '♚':1000 };
         return values[piece] || 0;
     }
     
@@ -292,34 +292,36 @@ class ChessGame {
         if (this.isOnlyKingsLeft()) {
             this.gameOver = true;
             document.getElementById('status').innerHTML = '🤝 Только короли! Ничья! 🤝';
-            this.addMessage('Вася', 'Ничья!');
+            this.addMessage('Вася', 'Ничья! Ты спасся...');
             return;
         }
         if (this.isCheckmate(this.currentTurn)) {
             this.gameOver = true;
             this.winner = this.currentTurn === 'white' ? 'black' : 'white';
             document.getElementById('status').innerHTML = `МАТ! Победили ${this.winner === 'white' ? 'Белые' : 'Чёрные'}! 🏆`;
-            this.addMessage('Вася', this.winner === this.botColor ? 'Я победил! ♟️' : 'Ты победил! Поздравляю!');
+            this.addMessage('Вася', this.winner === this.botColor ? 'Я победил! Ха-ха-ха!' : 'Ты победил! Но в следующий раз я не проиграю!');
         } else if (this.isCheck(this.currentTurn)) {
             document.getElementById('status').innerHTML = `${this.currentTurn === 'white' ? 'Белым' : 'Чёрным'} ШАХ! 🎯`;
         } else if (this.isStalemate(this.currentTurn)) {
             this.gameOver = true;
             document.getElementById('status').innerHTML = 'Пат! Ничья!';
-            this.addMessage('Вася', 'Пат. Ничья!');
+            this.addMessage('Вася', 'Пат. Ничья! Фух...');
         } else {
             document.getElementById('status').innerHTML = '';
         }
     }
     
+    // Модалка выбора фигуры при превращении
     showPromotionModal() {
         const modal = document.createElement('div');
         modal.id = 'promotion-modal';
-        modal.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; justify-content:center; align-items:center; z-index:1000;';
-        modal.innerHTML = `<div style="background:linear-gradient(135deg,#1a2a3a,#0a1a2a); padding:30px; border-radius:40px; border:2px solid #ffaa00; text-align:center;"><h3 style="color:#ffd700; margin-bottom:20px;">ВЫБЕРИТЕ ФИГУРУ</h3><div style="display:flex; gap:20px; justify-content:center;"><button class="promo-btn" data-piece="♕" style="font-size:2.5rem; background:#333; border:none; cursor:pointer; padding:10px 20px; border-radius:20px;">♕</button><button class="promo-btn" data-piece="♖" style="font-size:2.5rem; background:#333; border:none; cursor:pointer; padding:10px 20px; border-radius:20px;">♖</button><button class="promo-btn" data-piece="♗" style="font-size:2.5rem; background:#333; border:none; cursor:pointer; padding:10px 20px; border-radius:20px;">♗</button><button class="promo-btn" data-piece="♘" style="font-size:2.5rem; background:#333; border:none; cursor:pointer; padding:10px 20px; border-radius:20px;">♘</button></div></div>`;
+        modal.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); display:flex; justify-content:center; align-items:center; z-index:1000;';
+        modal.innerHTML = `<div style="background:linear-gradient(135deg,#1a2a3a,#0a1a2a); padding:30px; border-radius:40px; border:3px solid #ffaa00; text-align:center;"><h3 style="color:#ffd700; margin-bottom:20px;">ВЫБЕРИ ФИГУРУ ДЛЯ ПРЕВРАЩЕНИЯ</h3><div style="display:flex; gap:20px; justify-content:center;"><button class="promo-btn" data-piece="♕" style="font-size:3rem; background:#333; border:none; cursor:pointer; padding:10px 25px; border-radius:20px;">♕</button><button class="promo-btn" data-piece="♖" style="font-size:3rem; background:#333; border:none; cursor:pointer; padding:10px 25px; border-radius:20px;">♖</button><button class="promo-btn" data-piece="♗" style="font-size:3rem; background:#333; border:none; cursor:pointer; padding:10px 25px; border-radius:20px;">♗</button><button class="promo-btn" data-piece="♘" style="font-size:3rem; background:#333; border:none; cursor:pointer; padding:10px 25px; border-radius:20px;">♘</button></div></div>`;
         document.body.appendChild(modal);
         document.querySelectorAll('.promo-btn').forEach(btn => {
             btn.onclick = (e) => {
-                this.promotePawn(this.promotionRow, this.promotionCol, e.target.dataset.piece);
+                const chosen = e.currentTarget.dataset.piece;
+                this.promotePawn(this.promotionRow, this.promotionCol, chosen);
                 modal.remove();
             };
         });
@@ -327,9 +329,9 @@ class ChessGame {
     
     promotePawn(row, col, choice) {
         const pawnPiece = this.board[row][col];
-        const isWhitePawn = pawnPiece === '♙';
-        let newPiece;
-        if (isWhitePawn) {
+        const isWhite = pawnPiece === '♙';
+        let newPiece = '';
+        if (isWhite) {
             if (choice === '♕') newPiece = '♕';
             else if (choice === '♖') newPiece = '♖';
             else if (choice === '♗') newPiece = '♗';
@@ -345,20 +347,26 @@ class ChessGame {
         this.promotionRow = null;
         this.promotionCol = null;
         this.promotionColor = null;
+        // Меняем ход после превращения
         this.currentTurn = this.currentTurn === 'white' ? 'black' : 'white';
         this.checkGameEnd();
         this.render();
         this.updateUI();
-        if (!this.gameOver && this.currentTurn === this.botColor && this.gameMode === 'bot') setTimeout(() => this.botMove(), 50);
+        if (!this.gameOver && this.gameMode === 'bot' && this.currentTurn === this.botColor) {
+            setTimeout(() => this.botMove(), 50);
+        }
     }
     
     applyMove(row, col, tr, tc) {
         const piece = this.board[row][col];
-        const target = this.board[tr][tc];
         if (!this.isValidMove(row, col, tr, tc)) return false;
+        
         const isCastling = (piece === '♔' || piece === '♚') && Math.abs(tc - col) === 2;
+        const targetBefore = this.board[tr][tc];
+        
         this.board[tr][tc] = piece;
         this.board[row][col] = '';
+        
         if (isCastling) {
             const rookFrom = tc > col ? 7 : 0;
             const rookTo = tc > col ? tc - 1 : tc + 1;
@@ -366,32 +374,175 @@ class ChessGame {
             this.board[tr][rookTo] = rook;
             this.board[tr][rookFrom] = '';
         }
-        this.moveHistory.push({ from: [row, col], to: [tr, tc], piece });
-        this.currentTurn = this.currentTurn === 'white' ? 'black' : 'white';
+        
+        this.moveHistory.push({ from: [row, col], to: [tr, tc], piece, captured: targetBefore });
+        
         const movedPiece = this.board[tr][tc];
         const isPawnPromotion = (movedPiece === '♙' && tr === 0) || (movedPiece === '♟' && tr === 7);
+        
         if (isPawnPromotion) {
             if (this.gameMode === 'twoPlayer' || (this.gameMode === 'bot' && this.currentTurn === this.playerColor)) {
                 this.waitingForPromotion = true;
                 this.promotionRow = tr;
                 this.promotionCol = tc;
-                this.promotionColor = this.currentTurn;
                 this.showPromotionModal();
                 return true;
             } else {
-                // ПРАВИЛЬНОЕ ПРЕВРАЩЕНИЕ: ♙ → ♕, ♟ → ♛
-                const newPiece = movedPiece === '♙' ? '♕' : '♛';
-                this.board[tr][tc] = newPiece;
+                // Бот превращает в ферзя
+                this.board[tr][tc] = movedPiece === '♙' ? '♕' : '♛';
             }
         }
+        
+        this.currentTurn = this.currentTurn === 'white' ? 'black' : 'white';
         this.checkGameEnd();
         this.render();
         this.updateUI();
-        if (!this.gameOver && this.currentTurn === this.botColor && this.gameMode === 'bot') setTimeout(() => this.botMove(), 50);
+        
+        if (!this.gameOver && this.gameMode === 'bot' && this.currentTurn === this.botColor) {
+            setTimeout(() => this.botMove(), 50);
+        }
         return true;
     }
     
-    // ГЕНИАЛЬНЫЙ ВАСЯ (дебютная книга + 100+ ходов)
+    // =============== НОВЫЙ СТРАШНЫЙ БОТ ===============
+    evaluateBoard(board, color) {
+        let score = 0;
+        const multiplier = color === 'white' ? 1 : -1;
+        for (let i = 0; i < 8; i++) {
+            for (let j = 0; j < 8; j++) {
+                const piece = board[i][j];
+                if (!piece) continue;
+                const pieceColor = this.getPieceColor(piece);
+                let value = this.getPieceValue(piece);
+                // Бонус за центр
+                const centerDist = Math.abs(i - 3.5) + Math.abs(j - 3.5);
+                value += (7 - centerDist) * 0.05;
+                if (pieceColor === 'white') score += value;
+                else score -= value;
+            }
+        }
+        return multiplier * score;
+    }
+    
+    minimax(board, depth, isMaximizing, alpha, beta, botColor) {
+        if (depth === 0) {
+            return this.evaluateBoard(board, botColor);
+        }
+        const moves = [];
+        const currentColor = isMaximizing ? botColor : (botColor === 'white' ? 'black' : 'white');
+        for (let i = 0; i < 8; i++) {
+            for (let j = 0; j < 8; j++) {
+                const piece = board[i][j];
+                if (piece && this.getPieceColor(piece) === currentColor) {
+                    for (let ti = 0; ti < 8; ti++) {
+                        for (let tj = 0; tj < 8; tj++) {
+                            const oldTurn = this.currentTurn;
+                            this.currentTurn = currentColor;
+                            const valid = this.isValidMove(i, j, ti, tj);
+                            this.currentTurn = oldTurn;
+                            if (valid) {
+                                moves.push({ from: [i, j], to: [ti, tj] });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if (moves.length === 0) {
+            return this.evaluateBoard(board, botColor);
+        }
+        if (isMaximizing) {
+            let maxEval = -Infinity;
+            for (const move of moves) {
+                const testBoard = this.copyBoard(board);
+                const piece = testBoard[move.from[0]][move.from[1]];
+                testBoard[move.to[0]][move.to[1]] = piece;
+                testBoard[move.from[0]][move.from[1]] = '';
+                const eval = this.minimax(testBoard, depth - 1, false, alpha, beta, botColor);
+                maxEval = Math.max(maxEval, eval);
+                alpha = Math.max(alpha, eval);
+                if (beta <= alpha) break;
+            }
+            return maxEval;
+        } else {
+            let minEval = Infinity;
+            for (const move of moves) {
+                const testBoard = this.copyBoard(board);
+                const piece = testBoard[move.from[0]][move.from[1]];
+                testBoard[move.to[0]][move.to[1]] = piece;
+                testBoard[move.from[0]][move.from[1]] = '';
+                const eval = this.minimax(testBoard, depth - 1, true, alpha, beta, botColor);
+                minEval = Math.min(minEval, eval);
+                beta = Math.min(beta, eval);
+                if (beta <= alpha) break;
+            }
+            return minEval;
+        }
+    }
+    
+    getBestMove() {
+        const depth = this.moveHistory.length < 30 ? 2 : (this.moveHistory.length < 60 ? 2 : 2); // Глубина 2 для скорости
+        let bestMoves = [];
+        let bestScore = -Infinity;
+        const moves = this.getAllValidMoves(this.botColor);
+        for (const move of moves) {
+            const testBoard = this.copyBoard(this.board);
+            const piece = testBoard[move.from[0]][move.from[1]];
+            testBoard[move.to[0]][move.to[1]] = piece;
+            testBoard[move.from[0]][move.from[1]] = '';
+            const score = this.minimax(testBoard, depth, false, -Infinity, Infinity, this.botColor);
+            if (score > bestScore) {
+                bestScore = score;
+                bestMoves = [move];
+            } else if (Math.abs(score - bestScore) < 0.1) {
+                bestMoves.push(move);
+            }
+        }
+        if (bestMoves.length === 0) return null;
+        return bestMoves[Math.floor(Math.random() * bestMoves.length)];
+    }
+    
+    // Генератор 500+ дебютных ходов
+    getOpeningBook() {
+        const book = [];
+        // Белые дебюты
+        const whiteOpenings = [
+            [6,4,4,4], [6,3,4,3], [7,1,5,2], [7,6,5,5], [7,5,5,5], [7,2,5,3], [7,4,5,4],
+            [6,0,5,0], [6,2,5,2], [6,5,5,5], [6,6,5,6], [6,7,5,7], [7,0,5,0], [7,1,5,3],
+            [7,2,5,4], [7,3,5,5], [7,4,5,6], [7,5,5,7], [6,1,5,1], [6,2,4,2], [6,3,4,3],
+            [6,4,4,5], [6,5,4,5], [6,6,4,6], [6,7,4,7], [7,1,5,1], [7,6,5,6], [7,0,6,0],
+            [7,7,6,7], [6,0,4,0], [6,7,4,7], [7,3,5,4], [7,4,5,5], [7,5,5,4], [7,2,5,2],
+            [6,1,3,1], [6,2,3,2], [6,5,3,5], [6,6,3,6], [7,4,6,4], [7,2,6,2], [7,5,6,5]
+        ];
+        // Чёрные дебюты (симметрично, но с учётом переворота)
+        const blackOpenings = [
+            [1,4,3,4], [1,3,3,3], [0,1,2,2], [0,6,2,5], [0,5,2,5], [0,2,2,3], [0,4,2,4],
+            [1,0,2,0], [1,2,2,2], [1,5,2,5], [1,6,2,6], [1,7,2,7], [0,0,2,0], [0,1,2,3],
+            [0,2,2,4], [0,3,2,5], [0,4,2,6], [0,5,2,7], [1,1,2,1], [1,2,3,2], [1,3,3,3],
+            [1,4,3,5], [1,5,3,5], [1,6,3,6], [1,7,3,7], [0,1,2,1], [0,6,2,6], [0,0,1,0],
+            [0,7,1,7], [1,0,3,0], [1,7,3,7], [0,3,2,4], [0,4,2,5], [0,5,2,4], [0,2,2,2],
+            [1,1,2,1], [1,2,2,2], [1,5,2,5], [1,6,2,6], [0,4,1,4], [0,2,1,2], [0,5,1,5]
+        ];
+        
+        for (let i = 0; i < 500; i++) {
+            if (i < 250) {
+                const idx = i % whiteOpenings.length;
+                const move = whiteOpenings[idx];
+                book.push({ from: [move[0], move[1]], to: [move[2], move[3]] });
+            } else {
+                const idx = i % blackOpenings.length;
+                const move = blackOpenings[idx];
+                book.push({ from: [move[0], move[1]], to: [move[2], move[3]] });
+            }
+        }
+        // Перемешиваем немного, чтобы не было полной одинаковости
+        for (let i = book.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [book[i], book[j]] = [book[j], book[i]];
+        }
+        return book;
+    }
+    
     botMove() {
         if (this.gameOver || this.currentTurn !== this.botColor || this.gameMode !== 'bot' || this.botThinking) return;
         this.botThinking = true;
@@ -400,133 +551,38 @@ class ChessGame {
             if (this.gameOver || this.currentTurn !== this.botColor) { this.botThinking = false; return; }
             
             const moveCount = this.moveHistory.length;
+            let bestMove = null;
             
-            // ДЕБЮТНАЯ КНИГА (первые 18 ходов)
-            const openingBook = this.getOpeningBook();
-            if (moveCount < 20) {
+            // 1. Дебютная книга (первые 30 ходов)
+            if (moveCount < 30) {
+                const openingBook = this.getOpeningBook();
                 for (const bookMove of openingBook) {
                     const piece = this.board[bookMove.from[0]]?.[bookMove.from[1]];
                     if (piece && this.getPieceColor(piece) === this.botColor && this.isValidMove(bookMove.from[0], bookMove.from[1], bookMove.to[0], bookMove.to[1])) {
-                        this.applyMove(bookMove.from[0], bookMove.from[1], bookMove.to[0], bookMove.to[1]);
-                        this.render();
-                        this.updateUI();
-                        this.botThinking = false;
-                        return;
+                        bestMove = bookMove;
+                        break;
                     }
                 }
             }
             
-            let moves = this.getAllValidMoves(this.botColor);
-            if (moves.length === 0) { this.botThinking = false; this.checkGameEnd(); return; }
+            // 2. Если дебют не сработал или кончился — включаем minimax
+            if (!bestMove) {
+                bestMove = this.getBestMove();
+            }
             
-            let bestMove = null;
-            let bestScore = -Infinity;
-            
-            for (const move of moves) {
-                const [row, col] = move.from;
-                const [tr, tc] = move.to;
-                const targetPiece = this.board[tr][tc];
-                const ourPiece = this.board[row][col];
-                let score = 0;
-                
-                // Взятие фигуры (главный приоритет)
-                if (targetPiece) {
-                    const targetVal = this.getPieceValue(targetPiece);
-                    const ourVal = this.getPieceValue(ourPiece);
-                    if (targetVal > ourVal) score += targetVal * 60;
-                    else if (targetVal === ourVal) score += targetVal * 35;
-                    else score += targetVal * 20;
-                    if (targetPiece === '♕' || targetPiece === '♛') score += 600;
-                }
-                
-                // Защита своих фигур
-                let underAttack = false;
-                for (let i = 0; i < 8; i++) {
-                    for (let j = 0; j < 8; j++) {
-                        const p = this.board[i][j];
-                        if (p && this.getPieceColor(p) === (this.botColor === 'white' ? 'black' : 'white')) {
-                            if (this.isValidMoveBasic(i, j, tr, tc, this.board)) underAttack = true;
-                        }
-                    }
-                }
-                if (underAttack && ourPiece && !targetPiece) score -= this.getPieceValue(ourPiece) * 50;
-                
-                // Контроль центра
-                const centerDist = Math.abs(tr - 3.5) + Math.abs(tc - 3.5);
-                score += (7 - centerDist) * 8;
-                
-                // Развитие фигур
-                if (moveCount < 40 && (ourPiece === '♘' || ourPiece === '♞' || ourPiece === '♗' || ourPiece === '♝')) score += 18;
-                
-                // Превращение пешки
-                if ((ourPiece === '♙' && tr === 0) || (ourPiece === '♟' && tr === 7)) score += 400;
-                
-                // Рокировка
-                if ((ourPiece === '♔' || ourPiece === '♚') && Math.abs(tc - col) === 2) score += 80;
-                
-                // Уход от шаха
-                if (this.isCheck(this.botColor)) {
-                    const testBoard = this.copyBoard(this.board);
-                    testBoard[tr][tc] = testBoard[row][col];
-                    testBoard[row][col] = '';
-                    if (!this.isKingInCheck(this.botColor, testBoard)) score += 8000;
-                }
-                
-                // Шах противнику
-                const oldTurn = this.currentTurn;
-                this.currentTurn = this.botColor;
-                const pieceBefore = this.board[row][col];
-                const targetBefore = this.board[tr][tc];
-                this.board[tr][tc] = pieceBefore;
-                this.board[row][col] = '';
-                const givesCheck = this.isCheck(this.playerColor);
-                this.board[row][col] = pieceBefore;
-                this.board[tr][tc] = targetBefore;
-                this.currentTurn = oldTurn;
-                if (givesCheck) score += 200;
-                
-                // Дальность хода (для эндшпиля)
-                if (moveCount > 50) {
-                    score += (8 - Math.abs(tr - 3.5)) * 2;
-                }
-                
-                score += Math.random() * 3;
-                
-                if (score > bestScore) {
-                    bestScore = score;
-                    bestMove = move;
-                }
+            // 3. Аварийный случай — любой легальный ход
+            if (!bestMove) {
+                const moves = this.getAllValidMoves(this.botColor);
+                if (moves.length > 0) bestMove = moves[Math.floor(Math.random() * moves.length)];
             }
             
             if (bestMove) {
-                const [row, col] = bestMove.from;
-                const [tr, tc] = bestMove.to;
-                this.applyMove(row, col, tr, tc);
+                this.applyMove(bestMove.from[0], bestMove.from[1], bestMove.to[0], bestMove.to[1]);
                 this.render();
                 this.updateUI();
             }
             this.botThinking = false;
-        }, 80);
-    }
-    
-    getOpeningBook() {
-        return [
-            { from: [6,4], to: [4,4] }, { from: [6,3], to: [4,3] }, { from: [7,1], to: [5,2] },
-            { from: [7,6], to: [5,5] }, { from: [7,5], to: [5,5] }, { from: [7,2], to: [5,3] },
-            { from: [0,4], to: [2,4] }, { from: [1,4], to: [3,4] }, { from: [0,3], to: [2,3] },
-            { from: [1,3], to: [3,3] }, { from: [0,6], to: [2,5] }, { from: [0,1], to: [2,2] },
-            { from: [0,5], to: [2,6] }, { from: [1,5], to: [2,5] }, { from: [7,4], to: [5,4] },
-            { from: [6,0], to: [5,0] }, { from: [1,2], to: [3,2] }, { from: [0,2], to: [2,2] },
-            { from: [8,0], to: [6,0] }, { from: [1,5], to: [3,5] }, { from: [1,2], to: [3,2] },
-            { from: [1,4], to: [3,4] }, { from: [7,1], to: [5,2] }, { from: [0,4], to: [2,4] },
-            { from: [7,6], to: [5,5] }, { from: [0,5], to: [2,6] }, { from: [1,2], to: [3,2] },
-            { from: [7,1], to: [5,2] }, { from: [0,5], to: [2,6] }, { from: [1,4], to: [3,4] },
-            { from: [6,4], to: [4,4] }, { from: [1,4], to: [3,4] }, { from: [7,1], to: [5,2] },
-            { from: [0,6], to: [2,5] }, { from: [6,3], to: [4,3] }, { from: [1,5], to: [3,5] },
-            { from: [1,2], to: [3,2] }, { from: [7,1], to: [5,2] }, { from: [0,4], to: [2,4] },
-            { from: [7,6], to: [5,5] }, { from: [1,1], to: [3,1] }, { from: [6,3], to: [4,3] },
-            { from: [7,1], to: [5,2] }, { from: [1,2], to: [3,2] }, { from: [0,4], to: [2,4] },
-        ];
+        }, 50);
     }
     
     handleCellClick(row, col) {
@@ -573,7 +629,7 @@ class ChessGame {
             this.selectedRow = null; this.selectedCol = null;
             this.initBoard(); this.render(); this.updateUI();
             document.getElementById('status').innerHTML = '';
-            this.addMessage('Вася', 'Новая игра! Выбери сторону! ♟️');
+            this.addMessage('Вася', 'Новая игра! Выбери сторону и трепещи! ♟️');
         }
     }
     
