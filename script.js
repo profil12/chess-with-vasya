@@ -8,7 +8,7 @@ class ChessGame {
         this.winner = null;
         this.playerColor = null;
         this.botColor = null;
-        this.waitingForPromotion = false;
+        this.waitingForPromotionFlag = false;
         this.promotionRow = null;
         this.promotionCol = null;
         this.promotionColor = null;
@@ -57,7 +57,8 @@ class ChessGame {
         this.addMessage('Вася', 'Предлагаю ничью 🤝');
         setTimeout(() => {
             this.gameOver = true;
-            document.getElementById('status').innerHTML = '🤝 НИЧЬЯ! 🤝';
+            const statusEl = document.getElementById('status');
+            if (statusEl) statusEl.innerHTML = '🤝 НИЧЬЯ! 🤝';
             this.addMessage('Вася', 'Согласен! 🤝');
         }, 500);
     }
@@ -145,10 +146,12 @@ class ChessGame {
         this.resetGame();
         if (mode === 'twoPlayer') {
             this.addMessage('Вася', 'Режим двух игроков! Белые ходят первыми.');
-            document.getElementById('side-selector').style.display = 'none';
+            const selector = document.getElementById('side-selector');
+            if (selector) selector.style.display = 'none';
         } else {
             this.addMessage('Вася', 'Режим игры с ботом. Выбери сторону. Советую белые — будет чуть легче... но не намного.');
-            document.getElementById('side-selector').style.display = 'block';
+            const selector = document.getElementById('side-selector');
+            if (selector) selector.style.display = 'block';
         }
     }
     
@@ -164,7 +167,8 @@ class ChessGame {
         this.initBoard();
         this.render();
         this.updateUI();
-        document.getElementById('side-selector').style.display = 'none';
+        const selector = document.getElementById('side-selector');
+        if (selector) selector.style.display = 'none';
         if (this.playerColor === 'black') setTimeout(() => this.botMove(), 100);
         else this.addMessage('Вася', 'Твой ход. Не торопись, я подожду. Но недолго.');
     }
@@ -186,10 +190,10 @@ class ChessGame {
     
     getPieceColor(piece) {
         if (!piece) return null;
-        const white = ['♙', '♖', '♘', '♗', '♕', '♔'];
-        const black = ['♟', '♜', '♞', '♝', '♛', '♚'];
-        if (white.includes(piece)) return 'white';
-        if (black.includes(piece)) return 'black';
+        const whitePieces = ['♙', '♖', '♘', '♗', '♕', '♔'];
+        const blackPieces = ['♟', '♜', '♞', '♝', '♛', '♚'];
+        if (whitePieces.includes(piece)) return 'white';
+        if (blackPieces.includes(piece)) return 'black';
         return null;
     }
     
@@ -210,11 +214,9 @@ class ChessGame {
                 const pieceColor = this.getPieceColor(piece);
                 let value = this.getPieceValue(piece);
                 
-                // Центр
                 const centerDist = Math.abs(i - 3.5) + Math.abs(j - 3.5);
                 value += (7 - centerDist) * 0.12;
                 
-                // Пешечная структура
                 if (piece === '♙' || piece === '♟') {
                     let doubled = false;
                     for (let k = 0; k < 8; k++) {
@@ -235,7 +237,6 @@ class ChessGame {
                     if (passed) value += 0.7;
                 }
                 
-                // Открытые линии
                 if (piece === '♖' || piece === '♕' || piece === '♜' || piece === '♛') {
                     let openFile = true;
                     for (let k = 0; k < 8; k++) {
@@ -245,7 +246,6 @@ class ChessGame {
                     if (openFile) value += 0.5;
                 }
                 
-                // Безопасность короля
                 if (piece === '♔') {
                     for (let di = -1; di <= 1; di++) {
                         for (let dj = -1; dj <= 1; dj++) {
@@ -367,16 +367,16 @@ class ChessGame {
     copyBoard(board) { return board.map(row => [...row]); }
     
     getAllValidMoves(color) {
-        const moves = [];
+        const movesList = [];
         for (let i = 0; i < 8; i++) for (let j = 0; j < 8; j++) {
             const piece = this.board[i][j];
             if (piece && this.getPieceColor(piece) === color) {
                 for (let ti = 0; ti < 8; ti++) for (let tj = 0; tj < 8; tj++) {
-                    if (this.isValidMove(i, j, ti, tj)) moves.push({ from: [i, j], to: [ti, tj] });
+                    if (this.isValidMove(i, j, ti, tj)) movesList.push({ from: [i, j], to: [ti, tj] });
                 }
             }
         }
-        return moves;
+        return movesList;
     }
     
     isCheck(color) { return this.isKingInCheck(color, this.board); }
@@ -395,20 +395,23 @@ class ChessGame {
         if (this.isCheckmate(this.currentTurn)) {
             this.gameOver = true;
             this.winner = this.currentTurn === 'white' ? 'black' : 'white';
-            document.getElementById('status').innerHTML = `МАТ! Победили ${this.winner === 'white' ? 'Белые' : 'Чёрные'}! 🏆`;
+            const statusEl = document.getElementById('status');
+            if (statusEl) statusEl.innerHTML = `МАТ! Победили ${this.winner === 'white' ? 'Белые' : 'Чёрные'}! 🏆`;
             this.addMessage('Вася', this.winner === this.botColor ? 'Я победил! Ха-ха-ха! Ты жалок.' : 'Ты победил! Но в следующий раз я не проиграю... Возможно.');
         } else if (this.isCheck(this.currentTurn)) {
-            document.getElementById('status').innerHTML = `${this.currentTurn === 'white' ? 'Белым' : 'Чёрным'} ШАХ! 🎯`;
+            const statusEl = document.getElementById('status');
+            if (statusEl) statusEl.innerHTML = `${this.currentTurn === 'white' ? 'Белым' : 'Чёрным'} ШАХ! 🎯`;
         } else if (this.isStalemate(this.currentTurn)) {
             this.gameOver = true;
-            document.getElementById('status').innerHTML = 'Пат! Ничья!';
+            const statusEl = document.getElementById('status');
+            if (statusEl) statusEl.innerHTML = 'Пат! Ничья!';
             this.addMessage('Вася', 'Пат. Ничья! Считай, что тебе повезло.');
         } else {
-            document.getElementById('status').innerHTML = '';
+            const statusEl = document.getElementById('status');
+            if (statusEl) statusEl.innerHTML = '';
         }
     }
     
-    // ИСПРАВЛЕННОЕ ПРЕВРАЩЕНИЕ ПЕШКИ
     showPromotionModal() {
         const modal = document.createElement('div');
         modal.id = 'promotion-modal';
@@ -416,8 +419,8 @@ class ChessGame {
         modal.innerHTML = `<div style="background:linear-gradient(135deg,#1e2a3a,#0a1a2a); padding:30px; border-radius:40px; border:3px solid #ffaa00; text-align:center;"><h3 style="color:#ffd700; margin-bottom:20px; font-size:1.5rem;">ВЫБЕРИ ФИГУРУ ДЛЯ ПРЕВРАЩЕНИЯ</h3><div style="display:flex; gap:25px; justify-content:center; flex-wrap:wrap;"><button class="promo-btn" data-piece="♕" style="font-size:3.5rem; background:#2a3a3a; border:none; cursor:pointer; padding:10px 25px; border-radius:25px; transition:0.2s;">♕</button><button class="promo-btn" data-piece="♖" style="font-size:3.5rem; background:#2a3a3a; border:none; cursor:pointer; padding:10px 25px; border-radius:25px;">♖</button><button class="promo-btn" data-piece="♗" style="font-size:3.5rem; background:#2a3a3a; border:none; cursor:pointer; padding:10px 25px; border-radius:25px;">♗</button><button class="promo-btn" data-piece="♘" style="font-size:3.5rem; background:#2a3a3a; border:none; cursor:pointer; padding:10px 25px; border-radius:25px;">♘</button></div><p style="color:#ccc; margin-top:15px;">Нажми на символ фигуры</p></div>`;
         document.body.appendChild(modal);
         
-        const buttons = document.querySelectorAll('.promo-btn');
-        buttons.forEach(btn => {
+        const btns = document.querySelectorAll('.promo-btn');
+        btns.forEach(btn => {
             btn.onmouseenter = () => btn.style.transform = 'scale(1.1)';
             btn.onmouseleave = () => btn.style.transform = 'scale(1)';
             btn.onclick = (e) => {
@@ -444,11 +447,10 @@ class ChessGame {
             else newPiece = '♞';
         }
         this.board[row][col] = newPiece;
-        this.waitingForPromotion = false;
+        this.waitingForPromotionFlag = false;
         this.promotionRow = null;
         this.promotionCol = null;
         
-        // Меняем ход ПОСЛЕ превращения
         this.currentTurn = this.currentTurn === 'white' ? 'black' : 'white';
         this.checkGameEnd();
         this.render();
@@ -485,7 +487,7 @@ class ChessGame {
         
         if (isPawnPromotion) {
             if (this.gameMode === 'twoPlayer' || (this.gameMode === 'bot' && this.currentTurn === this.playerColor)) {
-                this.waitingForPromotion = true;
+                this.waitingForPromotionFlag = true;
                 this.promotionRow = tr;
                 this.promotionCol = tc;
                 this.showPromotionModal();
@@ -506,8 +508,8 @@ class ChessGame {
         return true;
     }
     
-    orderMoves(moves, board) {
-        return moves.sort((a, b) => {
+    orderMoves(movesList, board) {
+        return movesList.sort((a, b) => {
             const aPiece = board[a.from[0]][a.from[1]];
             const bPiece = board[b.from[0]][b.from[1]];
             const aTarget = board[a.to[0]][a.to[1]];
@@ -533,15 +535,15 @@ class ChessGame {
             return this.evaluatePosition(this.board, botColor);
         }
         
-        const moves = this.getAllValidMoves(isMaximizing ? botColor : (botColor === 'white' ? 'black' : 'white'));
-        if (moves.length === 0) {
+        const movesList = this.getAllValidMoves(isMaximizing ? botColor : (botColor === 'white' ? 'black' : 'white'));
+        if (movesList.length === 0) {
             if (this.isCheck(isMaximizing ? botColor : (botColor === 'white' ? 'black' : 'white'))) {
                 return isMaximizing ? -10000 : 10000;
             }
             return 0;
         }
         
-        const orderedMoves = this.orderMoves(moves, this.board);
+        const orderedMoves = this.orderMoves(movesList, this.board);
         
         if (isMaximizing) {
             let maxEval = -Infinity;
@@ -554,11 +556,11 @@ class ChessGame {
                 this.currentTurn = botColor === 'white' ? 'black' : 'white';
                 const tempBoard = this.board;
                 this.board = testBoard;
-                const eval = this.minimax(depth - 1, false, alpha, beta, botColor, startTime, timeLimit, maxDepth);
+                const evalVal = this.minimax(depth - 1, false, alpha, beta, botColor, startTime, timeLimit, maxDepth);
                 this.board = tempBoard;
                 this.currentTurn = oldTurn;
-                maxEval = Math.max(maxEval, eval);
-                alpha = Math.max(alpha, eval);
+                maxEval = Math.max(maxEval, evalVal);
+                alpha = Math.max(alpha, evalVal);
                 if (beta <= alpha) break;
             }
             this.transpositionTable.set(hash, { depth, value: maxEval });
@@ -574,11 +576,11 @@ class ChessGame {
                 this.currentTurn = botColor === 'white' ? 'white' : 'black';
                 const tempBoard = this.board;
                 this.board = testBoard;
-                const eval = this.minimax(depth - 1, true, alpha, beta, botColor, startTime, timeLimit, maxDepth);
+                const evalVal = this.minimax(depth - 1, true, alpha, beta, botColor, startTime, timeLimit, maxDepth);
                 this.board = tempBoard;
                 this.currentTurn = oldTurn;
-                minEval = Math.min(minEval, eval);
-                beta = Math.min(beta, eval);
+                minEval = Math.min(minEval, evalVal);
+                beta = Math.min(beta, evalVal);
                 if (beta <= alpha) break;
             }
             this.transpositionTable.set(hash, { depth, value: minEval });
@@ -588,21 +590,20 @@ class ChessGame {
     
     getBestMove() {
         const startTime = Date.now();
-        const timeLimit = 7000; // 7 секунд максимум
+        const timeLimit = 7000;
         let bestMoves = [];
         let bestScore = -Infinity;
-        const moves = this.getAllValidMoves(this.botColor);
+        const movesList = this.getAllValidMoves(this.botColor);
         
-        if (moves.length === 0) return null;
+        if (movesList.length === 0) return null;
         
-        // Адаптивная глубина: в эндшпиле глубже
         const totalPieces = this.board.flat().filter(p => p !== '').length;
         let maxDepth = 10;
         if (totalPieces <= 10) maxDepth = 15;
         else if (totalPieces <= 20) maxDepth = 12;
         else maxDepth = 9;
         
-        for (const move of moves) {
+        for (const move of movesList) {
             const testBoard = this.copyBoard(this.board);
             const piece = testBoard[move.from[0]][move.from[1]];
             testBoard[move.to[0]][move.to[1]] = piece;
@@ -689,8 +690,8 @@ class ChessGame {
             }
             
             if (!bestMove) {
-                const moves = this.getAllValidMoves(this.botColor);
-                if (moves.length > 0) bestMove = moves[Math.floor(Math.random() * moves.length)];
+                const movesList = this.getAllValidMoves(this.botColor);
+                if (movesList.length > 0) bestMove = movesList[Math.floor(Math.random() * movesList.length)];
             }
             
             if (bestMove) {
@@ -703,7 +704,7 @@ class ChessGame {
     }
     
     handleCellClick(row, col) {
-        if (this.gameOver || this.waitingForPromotion) return;
+        if (this.gameOver || this.waitingForPromotionFlag) return;
         if (this.gameMode === 'twoPlayer') {
             if (this.selectedRow !== null && this.selectedCol !== null) {
                 this.applyMove(this.selectedRow, this.selectedCol, row, col);
@@ -737,7 +738,8 @@ class ChessGame {
             this.currentTurn = 'white'; this.gameOver = false;
             this.selectedRow = null; this.selectedCol = null;
             this.initBoard(); this.render(); this.updateUI();
-            document.getElementById('status').innerHTML = '';
+            const statusEl = document.getElementById('status');
+            if (statusEl) statusEl.innerHTML = '';
             this.addMessage('Вася', 'Режим двух игроков! Белые ходят первыми.');
         } else {
             const selector = document.getElementById('side-selector');
@@ -745,7 +747,8 @@ class ChessGame {
             this.gameOver = false; this.playerColor = null; this.botColor = null;
             this.selectedRow = null; this.selectedCol = null;
             this.initBoard(); this.render(); this.updateUI();
-            document.getElementById('status').innerHTML = '';
+            const statusEl = document.getElementById('status');
+            if (statusEl) statusEl.innerHTML = '';
             this.addMessage('Вася', 'Новая игра! Выбери сторону. Я буду безжалостен.');
         }
     }
@@ -760,7 +763,7 @@ class ChessGame {
                 cell.classList.add('cell', (i+j)%2===0 ? 'light' : 'dark');
                 cell.textContent = this.board[i][j];
                 if (this.selectedRow === i && this.selectedCol === j) cell.classList.add('selected');
-                if (this.selectedRow !== null && this.selectedCol !== null && !this.waitingForPromotion && this.isValidMove(this.selectedRow, this.selectedCol, i, j)) {
+                if (this.selectedRow !== null && this.selectedCol !== null && !this.waitingForPromotionFlag && this.isValidMove(this.selectedRow, this.selectedCol, i, j)) {
                     const target = this.board[i][j];
                     if (target && this.getPieceColor(target) !== this.getPieceColor(this.board[this.selectedRow][this.selectedCol])) cell.classList.add('possible-capture');
                     else if (!target) cell.classList.add('possible-move');
@@ -777,7 +780,7 @@ class ChessGame {
         if (this.gameOver) turnSpan.textContent = this.winner === 'white' ? 'Белые победили!' : 'Чёрные победили!';
         else if (this.gameMode === 'twoPlayer') turnSpan.textContent = this.currentTurn === 'white' ? 'Ход белых' : 'Ход чёрных';
         else if (!this.playerColor) turnSpan.textContent = 'Выберите сторону';
-        else if (this.waitingForPromotion) turnSpan.textContent = 'Выберите фигуру';
+        else if (this.waitingForPromotionFlag) turnSpan.textContent = 'Выберите фигуру';
         else turnSpan.textContent = this.currentTurn === this.playerColor ? 'Ваш ход' : 'Вася думает... (до 7 сек)';
     }
     
