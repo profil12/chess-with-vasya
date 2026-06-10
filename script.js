@@ -138,13 +138,15 @@ class ChessGame {
         return values[piece] || 0;
     }
     
-    isValidMove(row, col, tr, tc) {
-        const piece = this.board[row][col];
+    // Базовая проверка хода (без проверки шаха своему королю)
+    isValidMoveBasic(row, col, tr, tc, board) {
+        const piece = board[row][col];
         if (!piece) return false;
-        if (this.getPieceColor(piece) !== this.currentTurn) return false;
+        const pieceColor = this.getPieceColor(piece);
+        if (pieceColor !== this.currentTurn) return false;
         
-        const targetPiece = this.board[tr][tc];
-        if (targetPiece && this.getPieceColor(targetPiece) === this.currentTurn) return false;
+        const targetPiece = board[tr][tc];
+        if (targetPiece && this.getPieceColor(targetPiece) === pieceColor) return false;
         
         const dr = tr - row;
         const dc = tc - col;
@@ -154,13 +156,13 @@ class ChessGame {
         // Пешки
         if (piece === '♙') {
             if (dc === 0 && dr === -1 && !targetPiece) return true;
-            if (dc === 0 && dr === -2 && row === 6 && !targetPiece && !this.board[5][col]) return true;
+            if (dc === 0 && dr === -2 && row === 6 && !targetPiece && !board[5][col]) return true;
             if (adc === 1 && dr === -1 && targetPiece && this.getPieceColor(targetPiece) === 'black') return true;
             return false;
         }
         if (piece === '♟') {
             if (dc === 0 && dr === 1 && !targetPiece) return true;
-            if (dc === 0 && dr === 2 && row === 1 && !targetPiece && !this.board[2][col]) return true;
+            if (dc === 0 && dr === 2 && row === 1 && !targetPiece && !board[2][col]) return true;
             if (adc === 1 && dr === 1 && targetPiece && this.getPieceColor(targetPiece) === 'white') return true;
             return false;
         }
@@ -170,10 +172,10 @@ class ChessGame {
             if (row !== tr && col !== tc) return false;
             if (row === tr) {
                 const step = tc > col ? 1 : -1;
-                for (let c = col + step; c !== tc; c += step) if (this.board[row][c]) return false;
+                for (let c = col + step; c !== tc; c += step) if (board[row][c]) return false;
             } else {
                 const step = tr > row ? 1 : -1;
-                for (let r = row + step; r !== tr; r += step) if (this.board[r][col]) return false;
+                for (let r = row + step; r !== tr; r += step) if (board[r][col]) return false;
             }
             return true;
         }
@@ -190,7 +192,7 @@ class ChessGame {
             const cStep = dc > 0 ? 1 : -1;
             let r = row + rStep, c = col + cStep;
             while (r !== tr && c !== tc) {
-                if (this.board[r][c]) return false;
+                if (board[r][c]) return false;
                 r += rStep;
                 c += cStep;
             }
@@ -198,136 +200,6 @@ class ChessGame {
         }
         
         // Ферзь
-        if (piece === '♕' || piece === '♛') {
-            if (row === tr || col === tc || adr === adc) {
-                if (row === tr) {
-                    const step = tc > col ? 1 : -1;
-                    for (let c = col + step; c !== tc; c += step) if (this.board[row][c]) return false;
-                } else if (col === tc) {
-                    const step = tr > row ? 1 : -1;
-                    for (let r = row + step; r !== tr; r += step) if (this.board[r][col]) return false;
-                } else {
-                    const rStep = dr > 0 ? 1 : -1;
-                    const cStep = dc > 0 ? 1 : -1;
-                    let r = row + rStep, c = col + cStep;
-                    while (r !== tr && c !== tc) {
-                        if (this.board[r][c]) return false;
-                        r += rStep;
-                        c += cStep;
-                    }
-                }
-                return true;
-            }
-            return false;
-        }
-        
-        // Король
-        if (piece === '♔' || piece === '♚') {
-            if (adr <= 1 && adc <= 1) {
-                // Проверяем, не будет ли король под шахом после хода
-                const testBoard = this.copyBoard();
-                testBoard[tr][tc] = piece;
-                testBoard[row][col] = '';
-                return !this.isKingInCheck(this.currentTurn, testBoard);
-            }
-            // Рокировка
-            if (dr === 0 && adc === 2 && row === tr && !this.isKingInCheck(this.currentTurn, this.board)) {
-                const rookCol = dc > 0 ? 7 : 0;
-                const rook = this.board[row][rookCol];
-                if (rook !== (piece === '♔' ? '♖' : '♜')) return false;
-                const step = dc > 0 ? 1 : -1;
-                for (let c = col + step; c !== rookCol; c += step) {
-                    if (this.board[row][c]) return false;
-                }
-                const midCol = (col + tc) / 2;
-                const testBoard = this.copyBoard();
-                testBoard[row][midCol] = piece;
-                testBoard[row][col] = '';
-                if (this.isKingInCheck(this.currentTurn, testBoard)) return false;
-                return true;
-            }
-            return false;
-        }
-        return false;
-    }
-    
-    copyBoard() {
-        return this.board.map(row => [...row]);
-    }
-    
-    isKingInCheck(color, board = this.board) {
-        let kingRow, kingCol;
-        const king = color === 'white' ? '♔' : '♚';
-        for (let i = 0; i < 8; i++) {
-            for (let j = 0; j < 8; j++) {
-                if (board[i][j] === king) {
-                    kingRow = i;
-                    kingCol = j;
-                    break;
-                }
-            }
-        }
-        const opp = color === 'white' ? 'black' : 'white';
-        for (let i = 0; i < 8; i++) {
-            for (let j = 0; j < 8; j++) {
-                const p = board[i][j];
-                if (p && this.getPieceColor(p) === opp) {
-                    if (this.isValidMoveWithoutCheck(i, j, kingRow, kingCol, board)) {
-                        return true;
-                    }
-                }
-            }
-        }
-        return false;
-    }
-    
-    isValidMoveWithoutCheck(row, col, tr, tc, board) {
-        const piece = board[row][col];
-        if (!piece) return false;
-        const targetPiece = board[tr][tc];
-        if (targetPiece && this.getPieceColor(targetPiece) === this.getPieceColor(piece)) return false;
-        
-        const dr = tr - row;
-        const dc = tc - col;
-        const adr = Math.abs(dr);
-        const adc = Math.abs(dc);
-        
-        if (piece === '♙') {
-            if (dc === 0 && dr === -1 && !targetPiece) return true;
-            if (adc === 1 && dr === -1 && targetPiece && this.getPieceColor(targetPiece) === 'black') return true;
-            return false;
-        }
-        if (piece === '♟') {
-            if (dc === 0 && dr === 1 && !targetPiece) return true;
-            if (adc === 1 && dr === 1 && targetPiece && this.getPieceColor(targetPiece) === 'white') return true;
-            return false;
-        }
-        if (piece === '♖' || piece === '♜') {
-            if (row !== tr && col !== tc) return false;
-            if (row === tr) {
-                const step = tc > col ? 1 : -1;
-                for (let c = col + step; c !== tc; c += step) if (board[row][c]) return false;
-            } else {
-                const step = tr > row ? 1 : -1;
-                for (let r = row + step; r !== tr; r += step) if (board[r][col]) return false;
-            }
-            return true;
-        }
-        if (piece === '♘' || piece === '♞') {
-            return (adr === 2 && adc === 1) || (adr === 1 && adc === 2);
-        }
-        if (piece === '♗' || piece === '♝') {
-            if (adr !== adc) return false;
-            const rStep = dr > 0 ? 1 : -1;
-            const cStep = dc > 0 ? 1 : -1;
-            let r = row + rStep, c = col + cStep;
-            while (r !== tr && c !== tc) {
-                if (board[r][c]) return false;
-                r += rStep;
-                c += cStep;
-            }
-            return true;
-        }
         if (piece === '♕' || piece === '♛') {
             if (row === tr || col === tc || adr === adc) {
                 if (row === tr) {
@@ -350,9 +222,79 @@ class ChessGame {
             }
             return false;
         }
+        
+        // Король
         if (piece === '♔' || piece === '♚') {
-            return adr <= 1 && adc <= 1;
+            if (adr <= 1 && adc <= 1) return true;
+            // Рокировка
+            if (dr === 0 && adc === 2 && row === tr && !this.isKingInCheck(this.currentTurn, board)) {
+                const rookCol = dc > 0 ? 7 : 0;
+                const rook = board[row][rookCol];
+                if (rook !== (piece === '♔' ? '♖' : '♜')) return false;
+                const step = dc > 0 ? 1 : -1;
+                for (let c = col + step; c !== rookCol; c += step) {
+                    if (board[row][c]) return false;
+                }
+                const midCol = (col + tc) / 2;
+                const testBoard = this.copyBoard(board);
+                testBoard[row][midCol] = piece;
+                testBoard[row][col] = '';
+                if (this.isKingInCheck(this.currentTurn, testBoard)) return false;
+                return true;
+            }
+            return false;
         }
+        return false;
+    }
+    
+    // Полная проверка хода (с проверкой шаха своему королю)
+    isValidMove(row, col, tr, tc) {
+        if (!this.isValidMoveBasic(row, col, tr, tc, this.board)) return false;
+        
+        // Проверяем, не будет ли король под шахом после хода
+        const testBoard = this.copyBoard(this.board);
+        const piece = testBoard[row][col];
+        testBoard[tr][tc] = piece;
+        testBoard[row][col] = '';
+        
+        return !this.isKingInCheck(this.currentTurn, testBoard);
+    }
+    
+    copyBoard(board) {
+        return board.map(row => [...row]);
+    }
+    
+    isKingInCheck(color, board) {
+        // Находим короля
+        let kingRow = -1, kingCol = -1;
+        const kingSymbol = color === 'white' ? '♔' : '♚';
+        for (let i = 0; i < 8; i++) {
+            for (let j = 0; j < 8; j++) {
+                if (board[i][j] === kingSymbol) {
+                    kingRow = i;
+                    kingCol = j;
+                    break;
+                }
+            }
+        }
+        if (kingRow === -1) return false;
+        
+        // Проверяем, атакует ли противник короля
+        const opponentColor = color === 'white' ? 'black' : 'white';
+        const oldTurn = this.currentTurn;
+        this.currentTurn = opponentColor;
+        for (let i = 0; i < 8; i++) {
+            for (let j = 0; j < 8; j++) {
+                const piece = board[i][j];
+                if (piece && this.getPieceColor(piece) === opponentColor) {
+                    if (this.isValidMoveBasic(i, j, kingRow, kingCol, board)) {
+                        this.currentTurn = oldTurn;
+                        return true;
+                    }
+                }
+            }
+        }
+        this.currentTurn = oldTurn;
         return false;
     }
     
@@ -360,8 +302,8 @@ class ChessGame {
         const moves = [];
         for (let i = 0; i < 8; i++) {
             for (let j = 0; j < 8; j++) {
-                const p = this.board[i][j];
-                if (p && this.getPieceColor(p) === color) {
+                const piece = this.board[i][j];
+                if (piece && this.getPieceColor(piece) === color) {
                     for (let ti = 0; ti < 8; ti++) {
                         for (let tj = 0; tj < 8; tj++) {
                             if (this.isValidMove(i, j, ti, tj)) {
@@ -382,19 +324,7 @@ class ChessGame {
     isCheckmate(color) {
         if (!this.isCheck(color)) return false;
         const moves = this.getAllValidMoves(color);
-        for (const move of moves) {
-            const [row, col] = move.from;
-            const [tr, tc] = move.to;
-            const piece = this.board[row][col];
-            const target = this.board[tr][tc];
-            this.board[tr][tc] = piece;
-            this.board[row][col] = '';
-            const still = this.isCheck(color);
-            this.board[row][col] = piece;
-            this.board[tr][tc] = target;
-            if (!still) return false;
-        }
-        return true;
+        return moves.length === 0;
     }
     
     isStalemate(color) {
@@ -510,7 +440,7 @@ class ChessGame {
         return true;
     }
     
-    // ГРОССМЕЙСТЕР ВАСЯ (оценивает материал, защиту, центр, шах)
+    // ГРОССМЕЙСТЕР ВАСЯ
     botMove() {
         if (this.gameOver) return;
         if (this.currentTurn !== this.botColor) return;
@@ -532,66 +462,37 @@ class ChessGame {
                 return;
             }
             
-            // Отфильтровываем ходы, оставляющие короля под шахом
-            const safeMoves = [];
-            for (const move of moves) {
-                const [row, col] = move.from;
-                const [tr, tc] = move.to;
-                const piece = this.board[row][col];
-                const target = this.board[tr][tc];
-                
-                this.board[tr][tc] = piece;
-                this.board[row][col] = '';
-                const stillInCheck = this.isCheck(this.botColor);
-                this.board[row][col] = piece;
-                this.board[tr][tc] = target;
-                
-                if (!stillInCheck) safeMoves.push(move);
-            }
-            
-            if (safeMoves.length === 0) {
-                this.botThinking = false;
-                this.checkGameEnd();
-                return;
-            }
-            
-            // Гроссмейстерская оценка ходов
+            // Оценка ходов
             let bestMove = null;
             let bestScore = -Infinity;
             
-            for (const move of safeMoves) {
+            for (const move of moves) {
                 const [row, col] = move.from;
                 const [tr, tc] = move.to;
                 const targetPiece = this.board[tr][tc];
                 const ourPiece = this.board[row][col];
                 let score = 0;
                 
-                // 1. Взятие ценной фигуры (главный приоритет)
+                // 1. Взятие фигуры (чем ценнее, тем лучше)
                 if (targetPiece) {
                     const targetValue = this.getPieceValue(targetPiece);
-                    const ourValue = this.getPieceValue(ourPiece);
-                    // Если берём более ценную фигуру чем отдаём
-                    if (targetValue > ourValue) {
-                        score += targetValue * 20;
-                    } else {
-                        score += targetValue * 10;
-                    }
+                    score += targetValue * 15;
                 }
                 
-                // 2. Защита своих фигур
-                let ourUnderAttack = false;
+                // 2. Защита своих фигур (если фигуру могут съесть)
+                let ourPieceUnderAttack = false;
                 for (let i = 0; i < 8; i++) {
                     for (let j = 0; j < 8; j++) {
                         const p = this.board[i][j];
                         if (p && this.getPieceColor(p) === (this.botColor === 'white' ? 'black' : 'white')) {
-                            if (this.isValidMoveWithoutCheck(i, j, tr, tc, this.board)) {
-                                ourUnderAttack = true;
+                            if (this.isValidMoveBasic(i, j, tr, tc, this.board)) {
+                                ourPieceUnderAttack = true;
                             }
                         }
                     }
                 }
-                if (ourUnderAttack && ourPiece) {
-                    score += this.getPieceValue(ourPiece) * 1.5;
+                if (ourPieceUnderAttack && ourPiece) {
+                    score += this.getPieceValue(ourPiece) * 2;
                 }
                 
                 // 3. Контроль центра
@@ -616,15 +517,20 @@ class ChessGame {
                 this.board[tr][tc] = targetBefore;
                 this.currentTurn = oldTurn;
                 if (givesCheck) {
-                    score += 15;
+                    score += 20;
                 }
                 
                 // 6. Рокировка
                 if ((ourPiece === '♔' || ourPiece === '♚') && Math.abs(tc - col) === 2) {
-                    score += 8;
+                    score += 10;
                 }
                 
-                // Небольшая случайность для разнообразия
+                // 7. Превращение пешки
+                if ((ourPiece === '♙' && tr === 0) || (ourPiece === '♟' && tr === 7)) {
+                    score += 30;
+                }
+                
+                // Небольшая случайность
                 score += Math.random() * 0.5;
                 
                 if (score > bestScore) {
