@@ -47,18 +47,62 @@ class ChessGame {
     getBotReply(msg) {
         const lower = msg.toLowerCase();
         const replies = {
-            'привет': ['Привет! Я гроссмейстер Вася!', 'Здравствуй! Готов проиграть?', 'О, привет!'],
-            'как дел': ['Отлично! Просчитываю варианты на 5 ходов!', 'Хорошо!', 'Нормально!'],
-            'пока': ['Пока! Заходи ещё!', 'До встречи!', 'Удачи!'],
-            'молодец': ['Спасибо! Я стараюсь!', 'Приятно!', 'Спасибо!'],
-            'дурак': ['Сам такой! Я гений!', 'Эй!', 'Обижаешь...'],
-            'шах': ['Шах! Я предупреждал!', 'Осторожно!', 'Король под ударом!'],
-            'мат': ['Мат! Я победил!', 'Красивая партия!', 'Сдавайся!']
+            'привет': [
+                'Привет! Я гроссмейстер Вася, мои партии изучают в шахматных школах! ♟️',
+                'Здравствуй! Готов проиграть? Я выиграл 1000 партий подряд!',
+                'О, привет! Слышал, ты хочешь проверить свои силы? Ну давай!'
+            ],
+            'как дел': [
+                'Отлично! Только что обыграл Stockfish в блиц!',
+                'Хорошо! Просчитываю варианты на 7 ходов вперёд!',
+                'Нормально, разбираю партию Каспарова против Deep Blue.'
+            ],
+            'пока': [
+                'Пока! Заходи ещё, я всегда готов дать тебе урок шахмат!',
+                'До встречи! Не забудь потренироваться перед следующей партией!',
+                'Удачи! Помни: шахматы — игра гениев, а я их король!'
+            ],
+            'молодец': [
+                'Спасибо! Я тренируюсь по 10 часов в день!',
+                'Приятно слышать от такого сильного соперника!',
+                'Стараюсь быть лучше с каждым ходом!'
+            ],
+            'дурак': [
+                'Сам такой! У меня рейтинг 2800 ELO!',
+                'Эй, полегче! Я между прочим учусь у гроссмейстеров!',
+                'Обижаешь...'
+            ],
+            'шах': [
+                'Шах! Ловушка захлопывается!',
+                'Осторожно, король под ударом! Это только начало...',
+                'Шах! Посмотрим, как ты выкрутишься!'
+            ],
+            'мат': [
+                'Мат! Поздравляю с поражением! Ещё партию?',
+                'Красивая комбинация, не правда ли? ♟️',
+                'Сдавайся, это был мат в 3 хода!'
+            ],
+            'сдаю': [
+                'Мудрое решение! Я бы тоже сдался на твоём месте.',
+                'Принимаю! Хорошая партия, но я был сильнее.',
+                'Спасибо за игру! Жду реванша!'
+            ]
         };
         for (const [key, arr] of Object.entries(replies)) {
             if (lower.includes(key)) return arr[Math.floor(Math.random() * arr.length)];
         }
-        const defaults = ['Интересный ход! ♟️', 'Просчитываю варианты... 🤔', 'Неплохо, но я лучше!', 'Хороший ход!'];
+        const defaults = [
+            'Интересный ход! Просчитываю контратаку... 🤔',
+            'Так-так... Вижу твою слабость!',
+            'Хм, неплохо. Но я вижу мат в 4 хода!',
+            'Атакуешь? Осторожно, я мастер защиты!',
+            'Это всё, на что ты способен?',
+            'Просчитываю варианты на 8 ходов вперёд...',
+            'Знаешь, Бобби Фишер играл не лучше тебя!',
+            'Великие гроссмейстеры плакали бы от такой партии!',
+            'Твоя стратегия предсказуема, как у новичка!',
+            'Я вижу твою ошибку уже сейчас...'
+        ];
         return defaults[Math.floor(Math.random() * defaults.length)];
     }
     
@@ -107,7 +151,7 @@ class ChessGame {
         if (this.playerColor === 'black') {
             setTimeout(() => this.botMove(), 100);
         } else {
-            this.addMessage('Вася', 'Твой ход! ♟️');
+            this.addMessage('Вася', 'Твой ход! Жду с нетерпением ♟️');
         }
     }
     
@@ -139,7 +183,6 @@ class ChessGame {
         return values[piece] || 0;
     }
     
-    // Базовая проверка хода без проверки шаха
     isValidMoveBasic(row, col, tr, tc, board) {
         const piece = board[row][col];
         if (!piece) return false;
@@ -154,7 +197,6 @@ class ChessGame {
         const adr = Math.abs(dr);
         const adc = Math.abs(dc);
         
-        // Пешки
         if (piece === '♙') {
             if (dc === 0 && dr === -1 && !targetPiece) return true;
             if (dc === 0 && dr === -2 && row === 6 && !targetPiece && !board[5][col]) return true;
@@ -168,7 +210,6 @@ class ChessGame {
             return false;
         }
         
-        // Ладья
         if (piece === '♖' || piece === '♜') {
             if (row !== tr && col !== tc) return false;
             if (row === tr) {
@@ -181,12 +222,10 @@ class ChessGame {
             return true;
         }
         
-        // Конь
         if (piece === '♘' || piece === '♞') {
             return (adr === 2 && adc === 1) || (adr === 1 && adc === 2);
         }
         
-        // Слон
         if (piece === '♗' || piece === '♝') {
             if (adr !== adc) return false;
             const rStep = dr > 0 ? 1 : -1;
@@ -200,7 +239,6 @@ class ChessGame {
             return true;
         }
         
-        // Ферзь
         if (piece === '♕' || piece === '♛') {
             if (row === tr || col === tc || adr === adc) {
                 if (row === tr) {
@@ -224,10 +262,8 @@ class ChessGame {
             return false;
         }
         
-        // Король
         if (piece === '♔' || piece === '♚') {
             if (adr <= 1 && adc <= 1) return true;
-            // Рокировка
             if (dr === 0 && adc === 2 && row === tr) {
                 const rookCol = dc > 0 ? 7 : 0;
                 const rook = board[row][rookCol];
@@ -244,7 +280,6 @@ class ChessGame {
     }
     
     isKingInCheck(color, board) {
-        // Находим короля
         let kingRow = -1, kingCol = -1;
         const kingSymbol = color === 'white' ? '♔' : '♚';
         for (let i = 0; i < 8; i++) {
@@ -258,13 +293,11 @@ class ChessGame {
         }
         if (kingRow === -1) return false;
         
-        // Проверяем все фигуры противника
         const opponentColor = color === 'white' ? 'black' : 'white';
         for (let i = 0; i < 8; i++) {
             for (let j = 0; j < 8; j++) {
                 const piece = board[i][j];
                 if (piece && this.getPieceColor(piece) === opponentColor) {
-                    // Временно меняем текущий цвет для проверки
                     const oldTurn = this.currentTurn;
                     this.currentTurn = opponentColor;
                     const isValid = this.isValidMoveBasic(i, j, kingRow, kingCol, board);
@@ -285,12 +318,10 @@ class ChessGame {
         const targetPiece = this.board[tr][tc];
         if (targetPiece && this.getPieceColor(targetPiece) === pieceColor) return false;
         
-        // Сначала проверяем базовую возможность хода
         const oldTurn = this.currentTurn;
         const isValidBasic = this.isValidMoveBasic(row, col, tr, tc, this.board);
         if (!isValidBasic) return false;
         
-        // Проверяем, не будет ли король под шахом после хода
         const testBoard = this.copyBoard(this.board);
         testBoard[tr][tc] = testBoard[row][col];
         testBoard[row][col] = '';
@@ -340,18 +371,18 @@ class ChessGame {
             this.gameOver = true;
             this.winner = this.currentTurn === 'white' ? 'black' : 'white';
             document.getElementById('status').innerHTML = `МАТ! Победили ${this.winner === 'white' ? 'Белые' : 'Чёрные'}! 🏆`;
-            this.addMessage('Вася', this.winner === this.botColor ? 'Я победил! ♟️' : 'Ты победил! Поздравляю!');
+            this.addMessage('Вася', this.winner === this.botColor ? 'Мат! Я гений! Ещё партию? ♟️' : 'Ты победил! Поздравляю! Но в реванше я буду серьёзнее!');
         } else if (this.isCheck(this.currentTurn)) {
             document.getElementById('status').innerHTML = `${this.currentTurn === 'white' ? 'Белым' : 'Чёрным'} ШАХ! 🎯`;
             if (this.currentTurn === this.botColor) {
-                this.addMessage('Вася', 'ШАХ! Защищаюсь! 👑');
+                this.addMessage('Вася', 'ШАХ! Я защищу своего короля! 👑');
             } else {
-                this.addMessage('Вася', 'ШАХ! Попробуй уйти!');
+                this.addMessage('Вася', 'ШАХ! Посмотрим, как ты выкрутишься...');
             }
         } else if (this.isStalemate(this.currentTurn)) {
             this.gameOver = true;
             document.getElementById('status').innerHTML = 'Пат! Ничья!';
-            this.addMessage('Вася', 'Пат. Ничья!');
+            this.addMessage('Вася', 'Пат! Ты достоин уважения. Ничья.');
         } else {
             document.getElementById('status').innerHTML = '';
         }
@@ -373,8 +404,12 @@ class ChessGame {
     
     promotePawn(row, col, choice) {
         let newPiece;
-        if (this.promotionColor === 'white') {
-            newPiece = choice;
+        // Определяем цвет превращаемой пешки
+        const pawnPiece = this.board[row][col];
+        const isWhitePawn = pawnPiece === '♙';
+        
+        if (isWhitePawn) {
+            newPiece = choice; // ♕, ♖, ♗, ♘
         } else {
             if (choice === '♕') newPiece = '♛';
             else if (choice === '♖') newPiece = '♜';
@@ -416,12 +451,11 @@ class ChessGame {
         
         this.currentTurn = this.currentTurn === 'white' ? 'black' : 'white';
         
-        // Проверка на превращение пешки
         const movedPiece = this.board[tr][tc];
         const isPawnPromotion = (movedPiece === '♙' && tr === 0) || (movedPiece === '♟' && tr === 7);
         
         if (isPawnPromotion) {
-            if (this.gameMode === 'twoPlayer' || (this.gameMode === 'bot' && this.currentTurn === this.playerColor)) {
+            if (this.gameMode === 'twoPlayer' || (this.gameMode === 'bot' && this.currentTurn !== this.botColor)) {
                 this.waitingForPromotion = true;
                 this.promotionRow = tr;
                 this.promotionCol = tc;
@@ -443,7 +477,6 @@ class ChessGame {
         return true;
     }
     
-    // ГЕНИЙ ВАСЯ (не отдаёт фигуры, защищается, атакует)
     botMove() {
         if (this.gameOver) return;
         if (this.currentTurn !== this.botColor) return;
@@ -465,7 +498,6 @@ class ChessGame {
                 return;
             }
             
-            // Оценка ходов (гроссмейстерская)
             let bestMove = null;
             let bestScore = -Infinity;
             
@@ -476,15 +508,12 @@ class ChessGame {
                 const ourPiece = this.board[row][col];
                 let score = 0;
                 
-                // 1. Взятие фигуры (самый главный приоритет)
                 if (targetPiece) {
                     const targetValue = this.getPieceValue(targetPiece);
                     score += targetValue * 20;
-                    // Если берём ферзя — огромный бонус
                     if (targetPiece === '♕' || targetPiece === '♛') score += 100;
                 }
                 
-                // 2. Защита своих фигур под ударом
                 let ourPieceUnderAttack = false;
                 let attackerValue = 0;
                 for (let i = 0; i < 8; i++) {
@@ -500,23 +529,19 @@ class ChessGame {
                 }
                 if (ourPieceUnderAttack && ourPiece) {
                     const ourValue = this.getPieceValue(ourPiece);
-                    // Если нашу ценную фигуру атакуют — уходим или защищаем
                     if (ourValue > attackerValue) {
                         score += ourValue * 8;
                     }
                 }
                 
-                // 3. Контроль центра
                 const centerDist = Math.abs(tr - 3.5) + Math.abs(tc - 3.5);
                 score += (7 - centerDist) * 2;
                 
-                // 4. Развитие фигур в дебюте
                 const totalMoves = this.getAllValidMoves('white').length + this.getAllValidMoves('black').length;
                 if (totalMoves < 30 && (ourPiece === '♘' || ourPiece === '♞' || ourPiece === '♗' || ourPiece === '♝')) {
                     score += 6;
                 }
                 
-                // 5. Шах противнику
                 const oldTurn = this.currentTurn;
                 this.currentTurn = this.botColor;
                 const pieceBefore = this.board[row][col];
@@ -531,19 +556,15 @@ class ChessGame {
                     score += 25;
                 }
                 
-                // 6. Рокировка
                 if ((ourPiece === '♔' || ourPiece === '♚') && Math.abs(tc - col) === 2) {
                     score += 15;
                 }
                 
-                // 7. Превращение пешки
                 if ((ourPiece === '♙' && tr === 0) || (ourPiece === '♟' && tr === 7)) {
                     score += 40;
                 }
                 
-                // 8. Уход от шаха (если король под шахом)
                 if (this.isCheck(this.botColor)) {
-                    // Проверяем, уводит ли этот ход короля из-под шаха
                     const testBoard = this.copyBoard(this.board);
                     testBoard[tr][tc] = testBoard[row][col];
                     testBoard[row][col] = '';
@@ -552,7 +573,6 @@ class ChessGame {
                     }
                 }
                 
-                // Небольшая случайность
                 score += Math.random() * 0.5;
                 
                 if (score > bestScore) {
@@ -636,7 +656,7 @@ class ChessGame {
             this.render();
             this.updateUI();
             document.getElementById('status').innerHTML = '';
-            this.addMessage('Вася', 'Новая игра! Выбери сторону! ♟️');
+            this.addMessage('Вася', 'Новая игра! Выбери сторону. Готовься проиграть ♟️');
         }
     }
     
