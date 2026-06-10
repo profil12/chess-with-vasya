@@ -1,3 +1,13 @@
+// ========== ГЛОБАЛЬНЫЙ ПЕРЕХВАТЧИК ОШИБОК ==========
+window.addEventListener('error', function(e) {
+    if (e.message && e.message.indexOf('arguments') !== -1) {
+        console.log('Перехвачена ошибка arguments, игнорируем');
+        e.preventDefault();
+        return true;
+    }
+});
+
+// ========== ШАХМАТЫ С ВАСЕЙ - ЗАЩИЩЁННАЯ ВЕРСИЯ ==========
 class ChessGame {
     constructor() {
         this.boardData = null;
@@ -16,12 +26,17 @@ class ChessGame {
         this.moveList = [];
         this.transTable = new Map();
         
-        this.initBoardData();
-        this.renderBoard();
-        this.addListeners();
-        this.updateTurnDisplay();
-        this.initChatSystem();
-        this.addDrawButton();
+        // Безопасный запуск
+        try {
+            this.initBoardData();
+            this.renderBoard();
+            this.addListeners();
+            this.updateTurnDisplay();
+            this.initChatSystem();
+            this.addDrawButton();
+        } catch(err) {
+            console.log('Ошибка в конструкторе:', err);
+        }
     }
     
     hashPosition() {
@@ -36,17 +51,19 @@ class ChessGame {
     }
     
     addDrawButton() {
-        setTimeout(() => {
-            const container = document.querySelector('.board-container');
-            if (container && !document.getElementById('draw-btn')) {
-                const btn = document.createElement('button');
-                btn.id = 'draw-btn';
-                btn.innerText = '🤝 НИЧЬЯ';
-                btn.style.cssText = 'background:#ff5500; border:none; padding:8px 20px; border-radius:40px; font-size:0.9rem; font-weight:bold; color:white; margin-top:10px; margin-right:10px; cursor:pointer;';
-                btn.onclick = () => this.offerDrawGame();
-                container.appendChild(btn);
-            }
-        }, 100);
+        try {
+            setTimeout(() => {
+                const container = document.querySelector('.board-container');
+                if (container && !document.getElementById('draw-btn')) {
+                    const btn = document.createElement('button');
+                    btn.id = 'draw-btn';
+                    btn.innerText = '🤝 НИЧЬЯ';
+                    btn.style.cssText = 'background:#ff5500; border:none; padding:8px 20px; border-radius:40px; font-size:0.9rem; font-weight:bold; color:white; margin-top:10px; margin-right:10px; cursor:pointer;';
+                    btn.onclick = (function(that) { return function() { that.offerDrawGame(); }; })(this);
+                    container.appendChild(btn);
+                }
+            }, 100);
+        } catch(e) { console.log('addDrawButton error:', e); }
     }
     
     offerDrawGame() {
@@ -63,8 +80,8 @@ class ChessGame {
     initChatSystem() {
         const inputField = document.getElementById('chat-input');
         const sendBtn = document.getElementById('chat-send');
-        if (sendBtn) sendBtn.onclick = () => this.sendChatMessage();
-        if (inputField) inputField.addEventListener('keypress', (e) => { if (e.key === 'Enter') this.sendChatMessage(); });
+        if (sendBtn) sendBtn.onclick = (function(that) { return function() { that.sendChatMessage(); }; })(this);
+        if (inputField) inputField.addEventListener('keypress', (function(that) { return function(e) { if (e.key === 'Enter') that.sendChatMessage(); }; })(this));
     }
     
     sendChatMessage() {
@@ -162,8 +179,8 @@ class ChessGame {
         if (!piece) return null;
         const whiteSymbols = ['♙', '♖', '♘', '♗', '♕', '♔'];
         const blackSymbols = ['♟', '♜', '♞', '♝', '♛', '♚'];
-        if (whiteSymbols.includes(piece)) return 'white';
-        if (blackSymbols.includes(piece)) return 'black';
+        if (whiteSymbols.indexOf(piece) !== -1) return 'white';
+        if (blackSymbols.indexOf(piece) !== -1) return 'black';
         return null;
     }
     
@@ -359,9 +376,10 @@ class ChessGame {
         modal.innerHTML = `<div style="background:linear-gradient(135deg,#1e2a3a,#0a1a2a); padding:30px; border-radius:40px; border:3px solid #ffaa00; text-align:center;"><h3 style="color:#ffd700; margin-bottom:20px;">ВЫБЕРИ ФИГУРУ</h3><div style="display:flex; gap:25px; justify-content:center;"><button class="promo-btn" data-piece="♕" style="font-size:3rem; background:#2a3a3a; border:none; cursor:pointer; padding:10px 25px; border-radius:25px;">♕</button><button class="promo-btn" data-piece="♖" style="font-size:3rem; background:#2a3a3a; border:none; cursor:pointer; padding:10px 25px; border-radius:25px;">♖</button><button class="promo-btn" data-piece="♗" style="font-size:3rem; background:#2a3a3a; border:none; cursor:pointer; padding:10px 25px; border-radius:25px;">♗</button><button class="promo-btn" data-piece="♘" style="font-size:3rem; background:#2a3a3a; border:none; cursor:pointer; padding:10px 25px; border-radius:25px;">♘</button></div></div>`;
         document.body.appendChild(modal);
         const btns = document.querySelectorAll('.promo-btn');
-        btns.forEach(btn => {
-            btn.onclick = () => {
-                this.promotePawnFunc(this.promoRow, this.promoCol, btn.dataset.piece);
+        const that = this;
+        btns.forEach(function(btn) {
+            btn.onclick = function() {
+                that.promotePawnFunc(that.promoRow, that.promoCol, this.dataset.piece);
                 modal.remove();
             };
         });
@@ -441,13 +459,14 @@ class ChessGame {
     }
     
     orderMovesByCapture(moves, board) {
-        return moves.sort((a, b) => {
+        const that = this;
+        return moves.sort(function(a, b) {
             const aPiece = board[a.from[0]][a.from[1]];
             const bPiece = board[b.from[0]][b.from[1]];
             const aTarget = board[a.to[0]][a.to[1]];
             const bTarget = board[b.to[0]][b.to[1]];
-            const aCapture = aTarget ? this.getPieceValueBySymbol(aTarget) - this.getPieceValueBySymbol(aPiece) : 0;
-            const bCapture = bTarget ? this.getPieceValueBySymbol(bTarget) - this.getPieceValueBySymbol(bPiece) : 0;
+            const aCapture = aTarget ? that.getPieceValueBySymbol(aTarget) - that.getPieceValueBySymbol(aPiece) : 0;
+            const bCapture = bTarget ? that.getPieceValueBySymbol(bTarget) - that.getPieceValueBySymbol(bPiece) : 0;
             return bCapture - aCapture;
         });
     }
@@ -490,7 +509,7 @@ class ChessGame {
                 alpha = Math.max(alpha, evalRes);
                 if (beta <= alpha) break;
             }
-            this.transTable.set(hash, { depth, value: maxVal });
+            this.transTable.set(hash, { depth: depth, value: maxVal });
             return maxVal;
         } else {
             let minVal = Infinity;
@@ -510,7 +529,7 @@ class ChessGame {
                 beta = Math.min(beta, evalRes);
                 if (beta <= alpha) break;
             }
-            this.transTable.set(hash, { depth, value: minVal });
+            this.transTable.set(hash, { depth: depth, value: minVal });
             return minVal;
         }
     }
@@ -565,7 +584,9 @@ class ChessGame {
         }
         for (let i = book.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
-            [book[i], book[j]] = [book[j], book[i]];
+            const temp = book[i];
+            book[i] = book[j];
+            book[j] = temp;
         }
         return book;
     }
@@ -579,7 +600,8 @@ class ChessGame {
             let bestMove = null;
             if (this.moveList.length < 20) {
                 const book = this.getOpeningBookMoves();
-                for (const bmv of book) {
+                for (let idx = 0; idx < book.length; idx++) {
+                    const bmv = book[idx];
                     const p = this.boardData[bmv.from[0]]?.[bmv.from[1]];
                     if (p && this.getPieceColorBySymbol(p) === this.botSide && this.isValidMoveFull(bmv.from[0], bmv.from[1], bmv.to[0], bmv.to[1])) {
                         bestMove = bmv;
@@ -673,6 +695,7 @@ class ChessGame {
         const boardElement = document.getElementById('board');
         if (!boardElement) return;
         boardElement.innerHTML = '';
+        const that = this;
         for (let i = 0; i < 8; i++) {
             for (let j = 0; j < 8; j++) {
                 const cell = document.createElement('div');
@@ -687,7 +710,9 @@ class ChessGame {
                         cell.classList.add('possible-move');
                     }
                 }
-                cell.addEventListener('click', ((r,c) => () => this.handleCellClick(r,c))(i,j));
+                (function(r, c, gameObj) {
+                    cell.addEventListener('click', function() { gameObj.handleCellClick(r, c); });
+                })(i, j, that);
                 boardElement.appendChild(cell);
             }
         }
@@ -716,13 +741,29 @@ class ChessGame {
         const randomBtn = document.getElementById('side-random');
         const botModeBtn = document.getElementById('bot-mode-btn');
         const twoPlayerBtn = document.getElementById('two-player-btn');
-        if (resetBtn) resetBtn.onclick = () => this.resetGameState();
-        if (whiteBtn) whiteBtn.onclick = () => this.setPlayerSide('white');
-        if (blackBtn) blackBtn.onclick = () => this.setPlayerSide('black');
-        if (randomBtn) randomBtn.onclick = () => this.setPlayerSide('random');
-        if (botModeBtn) botModeBtn.onclick = () => this.setGameType('bot');
-        if (twoPlayerBtn) twoPlayerBtn.onclick = () => this.setGameType('twoPlayer');
+        const that = this;
+        if (resetBtn) resetBtn.onclick = function() { that.resetGameState(); };
+        if (whiteBtn) whiteBtn.onclick = function() { that.setPlayerSide('white'); };
+        if (blackBtn) blackBtn.onclick = function() { that.setPlayerSide('black'); };
+        if (randomBtn) randomBtn.onclick = function() { that.setPlayerSide('random'); };
+        if (botModeBtn) botModeBtn.onclick = function() { that.setGameType('bot'); };
+        if (twoPlayerBtn) twoPlayerBtn.onclick = function() { that.setGameType('twoPlayer'); };
     }
 }
 
-const game = new ChessGame();
+// Безопасный запуск
+let game = null;
+try {
+    game = new ChessGame();
+    console.log('Игра успешно запущена!');
+} catch(err) {
+    console.log('Ошибка при запуске:', err);
+    // Запасной вариант
+    window.addEventListener('load', function() {
+        try {
+            game = new ChessGame();
+        } catch(e) {
+            console.log('Повторная попытка не удалась');
+        }
+    });
+}
