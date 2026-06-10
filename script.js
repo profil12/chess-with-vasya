@@ -565,7 +565,7 @@ class ChessGame {
         }
     }
     
-        resetGame() {
+            resetGame() {
         if (this.gameMode === 'twoPlayer') {
             this.playerColor = null;
             this.botColor = null;
