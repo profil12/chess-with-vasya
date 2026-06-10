@@ -14,14 +14,7 @@ class ChessGame {
         this.promotionColor = null;
         this.gameMode = 'bot';
         this.botThinking = false;
-        this.openingMoves = [
-            { from: [6,4], to: [4,4] },  // e4
-            { from: [6,3], to: [4,3] },  // d4
-            { from: [7,1], to: [5,2] },  // Nc3
-            { from: [7,6], to: [5,5] },  // Nf3
-            { from: [0,4], to: [2,4] },  // e5 (для чёрных)
-            { from: [0,3], to: [2,3] }   // d5 (для чёрных)
-        ];
+        this.moveHistory = [];
         
         this.initBoard();
         this.render();
@@ -55,62 +48,18 @@ class ChessGame {
     getBotReply(msg) {
         const lower = msg.toLowerCase();
         const replies = {
-            'привет': [
-                'Привет! Я гроссмейстер Вася, мои партии изучают в шахматных школах! ♟️',
-                'Здравствуй! Готов проиграть? Мой рейтинг 2850 ELO!',
-                'О, привет! Слышал, ты хочешь проверить свои силы? Ну давай, я буду милосерден!'
-            ],
-            'как дел': [
-                'Отлично! Только что обыграл Stockfish в блиц!',
-                'Хорошо! Просчитываю варианты на 8 ходов вперёд!',
-                'Нормально, разбираю партию Каспарова против Deep Blue.'
-            ],
-            'пока': [
-                'Пока! Заходи ещё, я всегда готов дать тебе урок шахмат!',
-                'До встречи! Не забудь потренироваться перед следующей партией!',
-                'Удачи! Помни: шахматы — игра гениев, а я их король!'
-            ],
-            'молодец': [
-                'Спасибо! Я тренируюсь по 10 часов в день!',
-                'Приятно слышать от такого сильного соперника!',
-                'Стараюсь быть лучше с каждым ходом!'
-            ],
-            'дурак': [
-                'Сам такой! У меня рейтинг 2800 ELO!',
-                'Эй, полегче! Я между прочим учусь у гроссмейстеров!',
-                'Обижаешь...'
-            ],
-            'шах': [
-                'Шах! Ловушка захлопывается!',
-                'Осторожно, король под ударом! Это только начало...',
-                'Шах! Посмотрим, как ты выкрутишься!'
-            ],
-            'мат': [
-                'Мат! Поздравляю с поражением! Ещё партию?',
-                'Красивая комбинация, не правда ли? ♟️',
-                'Сдавайся, это был мат в 3 хода!'
-            ],
-            'сдаю': [
-                'Мудрое решение! Я бы тоже сдался на твоём месте.',
-                'Принимаю! Хорошая партия, но я был сильнее.',
-                'Спасибо за игру! Жду реванша!'
-            ]
+            'привет': ['Привет! Я гроссмейстер Вася!', 'Здравствуй! Готов проиграть?', 'О, привет!'],
+            'как дел': ['Отлично! Просчитываю варианты!', 'Хорошо!', 'Нормально!'],
+            'пока': ['Пока! Заходи ещё!', 'До встречи!', 'Удачи!'],
+            'молодец': ['Спасибо! Я стараюсь!', 'Приятно!', 'Спасибо!'],
+            'дурак': ['Сам такой! Я гений!', 'Эй!', 'Обижаешь...'],
+            'шах': ['Шах! Я предупреждал!', 'Осторожно!', 'Король под ударом!'],
+            'мат': ['Мат! Я победил!', 'Красивая партия!', 'Сдавайся!']
         };
         for (const [key, arr] of Object.entries(replies)) {
             if (lower.includes(key)) return arr[Math.floor(Math.random() * arr.length)];
         }
-        const defaults = [
-            'Интересный ход! Просчитываю контратаку... 🤔',
-            'Так-так... Вижу твою слабость!',
-            'Хм, неплохо. Но я вижу мат в 4 хода!',
-            'Атакуешь? Осторожно, я мастер защиты!',
-            'Это всё, на что ты способен?',
-            'Просчитываю варианты на 8 ходов вперёд...',
-            'Знаешь, Бобби Фишер играл не лучше тебя!',
-            'Великие гроссмейстеры плакали бы от такой партии!',
-            'Твоя стратегия предсказуема, как у новичка!',
-            'Я вижу твою ошибку уже сейчас...'
-        ];
+        const defaults = ['Интересный ход! ♟️', 'Просчитываю варианты... 🤔', 'Неплохо, но я лучше!', 'Хороший ход!'];
         return defaults[Math.floor(Math.random() * defaults.length)];
     }
     
@@ -159,7 +108,7 @@ class ChessGame {
         if (this.playerColor === 'black') {
             setTimeout(() => this.botMove(), 100);
         } else {
-            this.addMessage('Вася', 'Твой ход! Жду с нетерпением ♟️');
+            this.addMessage('Вася', 'Твой ход! ♟️');
         }
     }
     
@@ -174,6 +123,7 @@ class ChessGame {
             ['♙', '♙', '♙', '♙', '♙', '♙', '♙', '♙'],
             ['♖', '♘', '♗', '♕', '♔', '♗', '♘', '♖']
         ];
+        this.moveHistory = [];
     }
     
     getPieceColor(piece) {
@@ -193,16 +143,15 @@ class ChessGame {
     
     isOnlyKingsLeft() {
         let whiteKing = false, blackKing = false;
-        let otherPieces = false;
         for (let i = 0; i < 8; i++) {
             for (let j = 0; j < 8; j++) {
                 const p = this.board[i][j];
                 if (p === '♔') whiteKing = true;
                 else if (p === '♚') blackKing = true;
-                else if (p !== '') otherPieces = true;
+                else if (p !== '') return false;
             }
         }
-        return whiteKing && blackKing && !otherPieces;
+        return whiteKing && blackKing;
     }
     
     isValidMoveBasic(row, col, tr, tc, board) {
@@ -393,25 +342,23 @@ class ChessGame {
         if (this.isOnlyKingsLeft()) {
             this.gameOver = true;
             document.getElementById('status').innerHTML = 'Пат! Только короли на доске! Ничья!';
-            this.addMessage('Вася', 'Только короли остались! Ничья. Хорошая партия!');
+            this.addMessage('Вася', 'Только короли остались! Ничья!');
             return;
         }
         if (this.isCheckmate(this.currentTurn)) {
             this.gameOver = true;
             this.winner = this.currentTurn === 'white' ? 'black' : 'white';
             document.getElementById('status').innerHTML = `МАТ! Победили ${this.winner === 'white' ? 'Белые' : 'Чёрные'}! 🏆`;
-            this.addMessage('Вася', this.winner === this.botColor ? 'Мат! Я гений! Ещё партию? ♟️' : 'Ты победил! Поздравляю! Но в реванше я буду серьёзнее!');
+            this.addMessage('Вася', this.winner === this.botColor ? 'Я победил! ♟️' : 'Ты победил! Поздравляю!');
         } else if (this.isCheck(this.currentTurn)) {
             document.getElementById('status').innerHTML = `${this.currentTurn === 'white' ? 'Белым' : 'Чёрным'} ШАХ! 🎯`;
             if (this.currentTurn === this.botColor) {
-                this.addMessage('Вася', 'ШАХ! Я защищу своего короля! 👑');
-            } else {
-                this.addMessage('Вася', 'ШАХ! Посмотрим, как ты выкрутишься...');
+                this.addMessage('Вася', 'ШАХ! Защищаюсь! 👑');
             }
         } else if (this.isStalemate(this.currentTurn)) {
             this.gameOver = true;
             document.getElementById('status').innerHTML = 'Пат! Ничья!';
-            this.addMessage('Вася', 'Пат! Ты достоин уважения. Ничья.');
+            this.addMessage('Вася', 'Пат. Ничья!');
         } else {
             document.getElementById('status').innerHTML = '';
         }
@@ -476,6 +423,7 @@ class ChessGame {
             this.board[tr][rookFrom] = '';
         }
         
+        this.moveHistory.push({ from: [row, col], to: [tr, tc], piece });
         this.currentTurn = this.currentTurn === 'white' ? 'black' : 'white';
         
         const movedPiece = this.board[tr][tc];
@@ -525,10 +473,9 @@ class ChessGame {
                 return;
             }
             
-            // В начале игры (первые 8 ходов) — разнообразие дебюта
-            const totalMoves = this.getAllValidMoves('white').length + this.getAllValidMoves('black').length;
             let bestMove = null;
             let bestScore = -Infinity;
+            const moveCount = this.moveHistory.length;
             
             for (const move of moves) {
                 const [row, col] = move.from;
@@ -537,44 +484,45 @@ class ChessGame {
                 const ourPiece = this.board[row][col];
                 let score = 0;
                 
-                // В дебюте — бонус за разные фигуры
-                if (totalMoves < 20) {
-                    if (ourPiece === '♘' || ourPiece === '♞') score += 2;
-                    if (ourPiece === '♗' || ourPiece === '♝') score += 2;
-                    if (ourPiece === '♙' && tr < 5) score += 1;
+                // В дебюте (первые 15 ходов) — разнообразие
+                if (moveCount < 15) {
+                    if (ourPiece === '♘' || ourPiece === '♞') score += 3;
+                    if (ourPiece === '♗' || ourPiece === '♝') score += 3;
+                    if (ourPiece === '♙') score += 1;
+                    if (ourPiece === '♖' || ourPiece === '♜') score += 2;
                 }
                 
-                // Взятие фигуры
+                // Взятие фигуры (главный приоритет)
                 if (targetPiece) {
                     const targetValue = this.getPieceValue(targetPiece);
-                    score += targetValue * 20;
-                    if (targetPiece === '♕' || targetPiece === '♛') score += 100;
+                    const ourValue = this.getPieceValue(ourPiece);
+                    score += targetValue * 25;
+                    if (targetValue > ourValue) score += (targetValue - ourValue) * 20;
+                    if (targetPiece === '♕' || targetPiece === '♛') score += 150;
                 }
                 
-                // Защита своих фигур под ударом
-                let ourPieceUnderAttack = false;
-                let attackerValue = 0;
+                // Защита своих фигур
+                let threatScore = 0;
                 for (let i = 0; i < 8; i++) {
                     for (let j = 0; j < 8; j++) {
                         const p = this.board[i][j];
                         if (p && this.getPieceColor(p) === (this.botColor === 'white' ? 'black' : 'white')) {
                             if (this.isValidMoveBasic(i, j, row, col, this.board)) {
-                                ourPieceUnderAttack = true;
-                                attackerValue = this.getPieceValue(p);
+                                threatScore += this.getPieceValue(ourPiece);
                             }
                         }
                     }
                 }
-                if (ourPieceUnderAttack && ourPiece) {
-                    const ourValue = this.getPieceValue(ourPiece);
-                    if (ourValue > attackerValue) {
-                        score += ourValue * 8;
-                    }
-                }
+                score -= threatScore * 2;
                 
                 // Контроль центра
                 const centerDist = Math.abs(tr - 3.5) + Math.abs(tc - 3.5);
-                score += (7 - centerDist) * 2;
+                score += (7 - centerDist) * 2.5;
+                
+                // Развитие в дебюте
+                if (moveCount < 20 && (ourPiece === '♘' || ourPiece === '♞' || ourPiece === '♗' || ourPiece === '♝')) {
+                    score += 4;
+                }
                 
                 // Шах противнику
                 const oldTurn = this.currentTurn;
@@ -587,42 +535,41 @@ class ChessGame {
                 this.board[row][col] = pieceBefore;
                 this.board[tr][tc] = targetBefore;
                 this.currentTurn = oldTurn;
-                if (givesCheck) {
-                    score += 25;
-                }
+                if (givesCheck) score += 30;
                 
                 // Рокировка
                 if ((ourPiece === '♔' || ourPiece === '♚') && Math.abs(tc - col) === 2) {
-                    score += 15;
+                    score += 20;
                 }
                 
                 // Превращение пешки
                 if ((ourPiece === '♙' && tr === 0) || (ourPiece === '♟' && tr === 7)) {
-                    score += 40;
+                    score += 60;
                 }
                 
-                // Уход от шаха
+                // Уход от шаха (максимальный приоритет)
                 if (this.isCheck(this.botColor)) {
                     const testBoard = this.copyBoard(this.board);
                     testBoard[tr][tc] = testBoard[row][col];
                     testBoard[row][col] = '';
                     if (!this.isKingInCheck(this.botColor, testBoard)) {
-                        score += 200;
+                        score += 500;
                     }
                 }
                 
-                // Тактический бонус: двойной удар, вилка и т.д.
-                let tacticalBonus = 0;
+                // Тактическая оценка: атакуемые фигуры противника
+                let attackScore = 0;
                 for (let i = 0; i < 8; i++) {
                     for (let j = 0; j < 8; j++) {
-                        if (this.board[i][j] && this.getPieceColor(this.board[i][j]) === this.playerColor) {
+                        const p = this.board[i][j];
+                        if (p && this.getPieceColor(p) === this.playerColor) {
                             if (this.isValidMoveBasic(tr, tc, i, j, this.board)) {
-                                tacticalBonus += this.getPieceValue(this.board[i][j]);
+                                attackScore += this.getPieceValue(p);
                             }
                         }
                     }
                 }
-                score += tacticalBonus * 2;
+                score += attackScore;
                 
                 score += Math.random() * 0.5;
                 
@@ -641,7 +588,7 @@ class ChessGame {
             }
             
             this.botThinking = false;
-        }, 80);
+        }, 100);
     }
     
     handleCellClick(row, col) {
@@ -702,12 +649,11 @@ class ChessGame {
             this.botColor = null;
             this.selectedRow = null;
             this.selectedCol = null;
-            this.currentTurn = 'white';
             this.initBoard();
             this.render();
             this.updateUI();
             document.getElementById('status').innerHTML = '';
-            this.addMessage('Вася', 'Новая игра! Выбери сторону. Готовься проиграть ♟️');
+            this.addMessage('Вася', 'Новая игра! Выбери сторону! ♟️');
         }
     }
     
