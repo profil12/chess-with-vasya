@@ -16,6 +16,24 @@ class ChessGame {
         this.botThinking = false;
         this.moveHistory = [];
         
+        // КНИГА ДЕБЮТОВ (первые 6 ходов как у гроссмейстера)
+        this.openingBook = [
+            // Белые
+            { from: [6,4], to: [4,4] },  // e4
+            { from: [7,1], to: [5,2] },  // Nf3
+            { from: [7,5], to: [5,5] },  // Nc3
+            { from: [6,3], to: [4,3] },  // d4
+            { from: [7,2], to: [5,3] },  // Bc4
+            { from: [0,4], to: [2,4] },  // e5 (чёрные)
+            { from: [1,4], to: [3,4] },  // e5 (чёрные пешка)
+            { from: [0,3], to: [2,3] },  // d5
+            { from: [1,3], to: [3,3] },  // d5
+            { from: [0,6], to: [2,5] },  // Nf6 (чёрные конь)
+            { from: [0,1], to: [2,2] },  // Nc6
+            { from: [0,5], to: [2,6] },  // Bb4
+            { from: [1,5], to: [2,5] },  // взятие
+        ];
+        
         this.initBoard();
         this.render();
         this.addEventListeners();
@@ -44,7 +62,7 @@ class ChessGame {
         setTimeout(() => {
             this.gameOver = true;
             document.getElementById('status').innerHTML = '🤝 НИЧЬЯ! 🤝';
-            this.addMessage('Вася', 'Согласен! Отличная партия! 🤝');
+            this.addMessage('Вася', 'Согласен! 🤝');
         }, 500);
     }
     
@@ -379,7 +397,7 @@ class ChessGame {
                 this.showPromotionModal();
                 return true;
             } else {
-                const newPiece = this.currentTurn === 'white' ? '♕' : '♛';
+                const newPiece = movedPiece === '♙' ? '♕' : '♛';
                 this.board[tr][tc] = newPiece;
             }
         }
@@ -390,7 +408,7 @@ class ChessGame {
         return true;
     }
     
-    // ГЕНИАЛЬНЫЙ ВАСЯ
+    // ВАСЯ — ГЕНИЙ С КНИГАМИ
     botMove() {
         if (this.gameOver || this.currentTurn !== this.botColor || this.gameMode !== 'bot' || this.botThinking) return;
         this.botThinking = true;
@@ -398,12 +416,28 @@ class ChessGame {
         setTimeout(() => {
             if (this.gameOver || this.currentTurn !== this.botColor) { this.botThinking = false; return; }
             
+            // Сначала проверяем дебютную книгу (первые 10 ходов)
+            const moveCount = this.moveHistory.length;
+            if (moveCount < 12 && this.currentTurn === this.botColor) {
+                for (const bookMove of this.openingBook) {
+                    const [fromRow, fromCol] = bookMove.from;
+                    const [toRow, toCol] = bookMove.to;
+                    const piece = this.board[fromRow][fromCol];
+                    if (piece && this.getPieceColor(piece) === this.botColor && this.isValidMove(fromRow, fromCol, toRow, toCol)) {
+                        this.applyMove(fromRow, fromCol, toRow, toCol);
+                        this.render();
+                        this.updateUI();
+                        this.botThinking = false;
+                        return;
+                    }
+                }
+            }
+            
             let moves = this.getAllValidMoves(this.botColor);
             if (moves.length === 0) { this.botThinking = false; this.checkGameEnd(); return; }
             
             let bestMove = null;
             let bestScore = -Infinity;
-            const moveCount = this.moveHistory.length;
             
             for (const move of moves) {
                 const [row, col] = move.from;
@@ -412,25 +446,17 @@ class ChessGame {
                 const ourPiece = this.board[row][col];
                 let score = 0;
                 
-                // ДЕБЮТ — разные фигуры
-                if (moveCount < 20) {
-                    if (ourPiece === '♘' || ourPiece === '♞') score += 8;
-                    if (ourPiece === '♗' || ourPiece === '♝') score += 8;
-                    if (ourPiece === '♙') score += 3;
-                    score += Math.random() * 6;
-                }
-                
-                // ВЗЯТИЕ ФИГУРЫ
+                // Взятие фигуры (самый важный приоритет)
                 if (targetPiece) {
                     const targetVal = this.getPieceValue(targetPiece);
                     const ourVal = this.getPieceValue(ourPiece);
-                    if (targetVal > ourVal) score += targetVal * 40;
-                    else if (targetVal === ourVal) score += targetVal * 20;
-                    else score += targetVal * 8;
-                    if (targetPiece === '♕' || targetPiece === '♛') score += 300;
+                    if (targetVal > ourVal) score += targetVal * 45;
+                    else if (targetVal === ourVal) score += targetVal * 25;
+                    else score += targetVal * 12;
+                    if (targetPiece === '♕' || targetPiece === '♛') score += 400;
                 }
                 
-                // ЗАЩИТА СВОИХ ФИГУР
+                // Защита своих фигур
                 let underAttack = false;
                 for (let i = 0; i < 8; i++) {
                     for (let j = 0; j < 8; j++) {
@@ -440,30 +466,30 @@ class ChessGame {
                         }
                     }
                 }
-                if (underAttack && ourPiece && !targetPiece) score -= this.getPieceValue(ourPiece) * 30;
+                if (underAttack && ourPiece && !targetPiece) score -= this.getPieceValue(ourPiece) * 35;
                 
-                // КОНТРОЛЬ ЦЕНТРА
+                // Контроль центра
                 const centerDist = Math.abs(tr - 3.5) + Math.abs(tc - 3.5);
-                score += (7 - centerDist) * 5;
+                score += (7 - centerDist) * 6;
                 
-                // РАЗВИТИЕ
-                if (moveCount < 25 && (ourPiece === '♘' || ourPiece === '♞' || ourPiece === '♗' || ourPiece === '♝')) score += 10;
+                // Развитие фигур в дебюте
+                if (moveCount < 25 && (ourPiece === '♘' || ourPiece === '♞' || ourPiece === '♗' || ourPiece === '♝')) score += 12;
                 
-                // ПРЕВРАЩЕНИЕ ПЕШКИ
-                if ((ourPiece === '♙' && tr === 0) || (ourPiece === '♟' && tr === 7)) score += 200;
+                // Превращение пешки
+                if ((ourPiece === '♙' && tr === 0) || (ourPiece === '♟' && tr === 7)) score += 250;
                 
-                // РОКИРОВКА
-                if ((ourPiece === '♔' || ourPiece === '♚') && Math.abs(tc - col) === 2) score += 50;
+                // Рокировка
+                if ((ourPiece === '♔' || ourPiece === '♚') && Math.abs(tc - col) === 2) score += 60;
                 
-                // УХОД ОТ ШАХА
+                // Уход от шаха (макс приоритет)
                 if (this.isCheck(this.botColor)) {
                     const testBoard = this.copyBoard(this.board);
                     testBoard[tr][tc] = testBoard[row][col];
                     testBoard[row][col] = '';
-                    if (!this.isKingInCheck(this.botColor, testBoard)) score += 2000;
+                    if (!this.isKingInCheck(this.botColor, testBoard)) score += 3000;
                 }
                 
-                // ШАХ ПРОТИВНИКУ
+                // Шах противнику
                 const oldTurn = this.currentTurn;
                 this.currentTurn = this.botColor;
                 const pieceBefore = this.board[row][col];
@@ -474,9 +500,16 @@ class ChessGame {
                 this.board[row][col] = pieceBefore;
                 this.board[tr][tc] = targetBefore;
                 this.currentTurn = oldTurn;
-                if (givesCheck) score += 100;
+                if (givesCheck) score += 120;
                 
-                score += Math.random() * 2;
+                // Эндшпиль — материальный баланс
+                const whiteMaterial = this.getAllValidMoves('white').length;
+                const blackMaterial = this.getAllValidMoves('black').length;
+                if (whiteMaterial + blackMaterial < 20) {
+                    score += (blackMaterial - whiteMaterial) * 10;
+                }
+                
+                score += Math.random() * 3;
                 
                 if (score > bestScore) {
                     bestScore = score;
@@ -492,7 +525,7 @@ class ChessGame {
                 this.updateUI();
             }
             this.botThinking = false;
-        }, 100);
+        }, 80);
     }
     
     handleCellClick(row, col) {
