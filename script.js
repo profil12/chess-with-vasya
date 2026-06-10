@@ -16,22 +16,94 @@ class ChessGame {
         this.botThinking = false;
         this.moveHistory = [];
         
-        // КНИГА ДЕБЮТОВ (первые 6 ходов как у гроссмейстера)
+        // ОГРОМНАЯ БИБЛИОТЕКА ДЕБЮТОВ (более 50 ходов)
         this.openingBook = [
-            // Белые
+            // 1. Испанская партия (Рюи Лопес)
             { from: [6,4], to: [4,4] },  // e4
-            { from: [7,1], to: [5,2] },  // Nf3
-            { from: [7,5], to: [5,5] },  // Nc3
             { from: [6,3], to: [4,3] },  // d4
+            { from: [7,1], to: [5,2] },  // Nf3
+            { from: [7,6], to: [5,5] },  // Nc3
+            { from: [7,5], to: [5,5] },  // Nc3 (альт)
             { from: [7,2], to: [5,3] },  // Bc4
             { from: [0,4], to: [2,4] },  // e5 (чёрные)
-            { from: [1,4], to: [3,4] },  // e5 (чёрные пешка)
+            { from: [1,4], to: [3,4] },  // e5
             { from: [0,3], to: [2,3] },  // d5
             { from: [1,3], to: [3,3] },  // d5
-            { from: [0,6], to: [2,5] },  // Nf6 (чёрные конь)
+            { from: [0,6], to: [2,5] },  // Nf6
             { from: [0,1], to: [2,2] },  // Nc6
             { from: [0,5], to: [2,6] },  // Bb4
             { from: [1,5], to: [2,5] },  // взятие
+            { from: [7,4], to: [5,4] },  // d3
+            { from: [6,0], to: [5,0] },  // a3
+            
+            // 2. Сицилианская защита
+            { from: [6,4], to: [4,4] },  // e4
+            { from: [1,2], to: [3,2] },  // c5 (сицилианская)
+            { from: [7,1], to: [5,2] },  // Nf3
+            { from: [0,2], to: [2,2] },  // Nc6
+            { from: [8,0], to: [6,0] },  // d4
+            { from: [1,3], to: [3,3] },  // d5
+            
+            // 3. Французская защита
+            { from: [6,4], to: [4,4] },  // e4
+            { from: [1,5], to: [3,5] },  // e6
+            { from: [6,3], to: [4,3] },  // d4
+            { from: [1,4], to: [3,4] },  // d5
+            
+            // 4. Защита Каро-Канн
+            { from: [6,4], to: [4,4] },  // e4
+            { from: [1,2], to: [3,2] },  // c6
+            { from: [6,3], to: [4,3] },  // d4
+            { from: [1,4], to: [3,4] },  // d5
+            
+            // 5. Ферзевый гамбит
+            { from: [6,3], to: [4,3] },  // d4
+            { from: [1,4], to: [3,4] },  // d5
+            { from: [1,2], to: [3,2] },  // c4
+            { from: [1,3], to: [3,3] },  // e6
+            
+            // 6. Защита Нимцовича
+            { from: [6,3], to: [4,3] },  // d4
+            { from: [7,1], to: [5,2] },  // Nf6
+            { from: [1,2], to: [3,2] },  // c4
+            { from: [0,5], to: [2,6] },  // Bb4
+            
+            // 7. Английское начало
+            { from: [1,2], to: [3,2] },  // c4
+            { from: [7,1], to: [5,2] },  // Nf6
+            { from: [7,6], to: [5,5] },  // Nc3
+            { from: [0,5], to: [2,6] },  // Bb4
+            
+            // 8. Защита Пирца
+            { from: [6,4], to: [4,4] },  // e4
+            { from: [1,4], to: [3,4] },  // d6
+            { from: [6,3], to: [4,3] },  // d4
+            { from: [7,1], to: [5,2] },  // Nf6
+            
+            // 9. Голландская защита
+            { from: [6,3], to: [4,3] },  // d4
+            { from: [1,5], to: [3,5] },  // f5
+            { from: [1,2], to: [3,2] },  // c4
+            { from: [7,1], to: [5,2] },  // Nf6
+            
+            // 10. Шотландская партия
+            { from: [6,4], to: [4,4] },  // e4
+            { from: [0,4], to: [2,4] },  // e5
+            { from: [7,1], to: [5,2] },  // Nf3
+            { from: [0,6], to: [2,5] },  // Nc6
+            { from: [6,3], to: [4,3] },  // d4
+            
+            // 11. Венская партия
+            { from: [6,4], to: [4,4] },  // e4
+            { from: [0,4], to: [2,4] },  // e5
+            { from: [7,6], to: [5,5] },  // Nc3
+            { from: [1,1], to: [3,1] },  // Bc5
+            
+            // 12. Будапештский гамбит
+            { from: [6,3], to: [4,3] },  // d4
+            { from: [7,1], to: [5,2] },  // Nf6
+            { from: [1,2], to: [3,2] },  // c4
+            { from: [0,4], to: [2,4] },  // e5
         ];
         
         this.initBoard();
@@ -408,7 +480,6 @@ class ChessGame {
         return true;
     }
     
-    // ВАСЯ — ГЕНИЙ С КНИГАМИ
     botMove() {
         if (this.gameOver || this.currentTurn !== this.botColor || this.gameMode !== 'bot' || this.botThinking) return;
         this.botThinking = true;
@@ -416,13 +487,15 @@ class ChessGame {
         setTimeout(() => {
             if (this.gameOver || this.currentTurn !== this.botColor) { this.botThinking = false; return; }
             
-            // Сначала проверяем дебютную книгу (первые 10 ходов)
             const moveCount = this.moveHistory.length;
-            if (moveCount < 12 && this.currentTurn === this.botColor) {
+            
+            // ДЕБЮТНАЯ КНИГА (первые 15 ходов)
+            if (moveCount < 18) {
                 for (const bookMove of this.openingBook) {
                     const [fromRow, fromCol] = bookMove.from;
                     const [toRow, toCol] = bookMove.to;
-                    const piece = this.board[fromRow][fromCol];
+                    if (fromRow === undefined) continue;
+                    const piece = this.board[fromRow]?.[fromCol];
                     if (piece && this.getPieceColor(piece) === this.botColor && this.isValidMove(fromRow, fromCol, toRow, toCol)) {
                         this.applyMove(fromRow, fromCol, toRow, toCol);
                         this.render();
@@ -446,14 +519,14 @@ class ChessGame {
                 const ourPiece = this.board[row][col];
                 let score = 0;
                 
-                // Взятие фигуры (самый важный приоритет)
+                // Взятие фигуры (главный приоритет)
                 if (targetPiece) {
                     const targetVal = this.getPieceValue(targetPiece);
                     const ourVal = this.getPieceValue(ourPiece);
-                    if (targetVal > ourVal) score += targetVal * 45;
-                    else if (targetVal === ourVal) score += targetVal * 25;
-                    else score += targetVal * 12;
-                    if (targetPiece === '♕' || targetPiece === '♛') score += 400;
+                    if (targetVal > ourVal) score += targetVal * 50;
+                    else if (targetVal === ourVal) score += targetVal * 30;
+                    else score += targetVal * 15;
+                    if (targetPiece === '♕' || targetPiece === '♛') score += 500;
                 }
                 
                 // Защита своих фигур
@@ -466,27 +539,27 @@ class ChessGame {
                         }
                     }
                 }
-                if (underAttack && ourPiece && !targetPiece) score -= this.getPieceValue(ourPiece) * 35;
+                if (underAttack && ourPiece && !targetPiece) score -= this.getPieceValue(ourPiece) * 40;
                 
                 // Контроль центра
                 const centerDist = Math.abs(tr - 3.5) + Math.abs(tc - 3.5);
-                score += (7 - centerDist) * 6;
+                score += (7 - centerDist) * 7;
                 
-                // Развитие фигур в дебюте
-                if (moveCount < 25 && (ourPiece === '♘' || ourPiece === '♞' || ourPiece === '♗' || ourPiece === '♝')) score += 12;
+                // Развитие фигур
+                if (moveCount < 30 && (ourPiece === '♘' || ourPiece === '♞' || ourPiece === '♗' || ourPiece === '♝')) score += 15;
                 
                 // Превращение пешки
-                if ((ourPiece === '♙' && tr === 0) || (ourPiece === '♟' && tr === 7)) score += 250;
+                if ((ourPiece === '♙' && tr === 0) || (ourPiece === '♟' && tr === 7)) score += 300;
                 
                 // Рокировка
-                if ((ourPiece === '♔' || ourPiece === '♚') && Math.abs(tc - col) === 2) score += 60;
+                if ((ourPiece === '♔' || ourPiece === '♚') && Math.abs(tc - col) === 2) score += 70;
                 
-                // Уход от шаха (макс приоритет)
+                // Уход от шаха
                 if (this.isCheck(this.botColor)) {
                     const testBoard = this.copyBoard(this.board);
                     testBoard[tr][tc] = testBoard[row][col];
                     testBoard[row][col] = '';
-                    if (!this.isKingInCheck(this.botColor, testBoard)) score += 3000;
+                    if (!this.isKingInCheck(this.botColor, testBoard)) score += 5000;
                 }
                 
                 // Шах противнику
@@ -500,14 +573,7 @@ class ChessGame {
                 this.board[row][col] = pieceBefore;
                 this.board[tr][tc] = targetBefore;
                 this.currentTurn = oldTurn;
-                if (givesCheck) score += 120;
-                
-                // Эндшпиль — материальный баланс
-                const whiteMaterial = this.getAllValidMoves('white').length;
-                const blackMaterial = this.getAllValidMoves('black').length;
-                if (whiteMaterial + blackMaterial < 20) {
-                    score += (blackMaterial - whiteMaterial) * 10;
-                }
+                if (givesCheck) score += 150;
                 
                 score += Math.random() * 3;
                 
