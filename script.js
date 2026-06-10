@@ -22,19 +22,22 @@ class ChessGame {
         this.addEventListeners();
         this.updateUI();
         this.initChat();
-        this.addDrawButton();
+        this.addDrawButton(); // Кнопка предложения ничьей
     }
     
     addDrawButton() {
-        const container = document.querySelector('.board-container');
-        if (container && !document.getElementById('draw-btn')) {
-            const btn = document.createElement('button');
-            btn.id = 'draw-btn';
-            btn.innerText = '🤝 ПРЕДЛОЖИТЬ НИЧЬЮ';
-            btn.style.cssText = 'background:#ff5500; border:none; padding:8px 20px; border-radius:40px; font-size:0.9rem; font-weight:bold; color:white; margin-top:10px; margin-right:10px; cursor:pointer;';
-            btn.onclick = () => this.offerDraw();
-            container.appendChild(btn);
-        }
+        // Ждём, пока DOM загрузится
+        setTimeout(() => {
+            const container = document.querySelector('.board-container');
+            if (container && !document.getElementById('draw-btn')) {
+                const btn = document.createElement('button');
+                btn.id = 'draw-btn';
+                btn.innerText = '🤝 ПРЕДЛОЖИТЬ НИЧЬЮ';
+                btn.style.cssText = 'background:#555; border:none; padding:8px 20px; border-radius:40px; font-size:0.9rem; font-weight:bold; color:white; margin-top:10px; margin-right:10px; cursor:pointer;';
+                btn.onclick = () => this.offerDraw();
+                container.appendChild(btn);
+            }
+        }, 100);
     }
     
     offerDraw() {
@@ -413,6 +416,7 @@ class ChessGame {
         return true;
     }
     
+    // ГЕНИАЛЬНЫЙ ВАСЯ — НЕ РАЗБРАСЫВАЕТ ФИГУРЫ
     botMove() {
         if (this.gameOver || this.currentTurn !== this.botColor || this.gameMode !== 'bot' || this.botThinking) return;
         this.botThinking = true;
@@ -434,59 +438,63 @@ class ChessGame {
                 const ourPiece = this.board[row][col];
                 let score = 0;
                 
-                // В дебюте — разнообразие ходов
+                // ДЕБЮТ — РАЗНЫЕ ФИГУРЫ
                 if (moveCount < 20) {
-                    if (ourPiece === '♘' || ourPiece === '♞') score += 6 + Math.random() * 4;
-                    if (ourPiece === '♗' || ourPiece === '♝') score += 6 + Math.random() * 4;
-                    if (ourPiece === '♙' && tr > 2) score += 3;
-                    if (ourPiece === '♖' || ourPiece === '♜') score += 4;
-                    score += Math.random() * 10;
+                    if (ourPiece === '♘' || ourPiece === '♞') score += 7;
+                    if (ourPiece === '♗' || ourPiece === '♝') score += 7;
+                    if (ourPiece === '♙') score += 2;
+                    score += Math.random() * 8;
                 }
                 
-                // Взятие фигуры
+                // ВЗЯТИЕ ФИГУРЫ (только если выгодно или нужно)
                 if (targetPiece) {
                     const targetValue = this.getPieceValue(targetPiece);
                     const ourValue = this.getPieceValue(ourPiece);
                     if (targetValue > ourValue) score += targetValue * 30;
                     else if (targetValue === ourValue) score += targetValue * 15;
-                    else score += targetValue * 5;
-                    if (targetPiece === '♕' || targetPiece === '♛') score += 150;
+                    else if (targetValue < ourValue && this.isCheck(this.botColor)) score += targetValue * 20;
+                    else score += targetValue * 3;
+                    if (targetPiece === '♕' || targetPiece === '♛') score += 200;
                 }
                 
-                // Защита своих фигур (экономия)
-                let underAttack = false;
+                // ЗАЩИТА СВОИХ ФИГУР (НЕ РАЗБРАСЫВАЕТСЯ)
+                let ourPieceUnderAttack = false;
                 for (let i = 0; i < 8; i++) {
                     for (let j = 0; j < 8; j++) {
                         const p = this.board[i][j];
                         if (p && this.getPieceColor(p) === (this.botColor === 'white' ? 'black' : 'white')) {
-                            if (this.isValidMoveBasic(i, j, tr, tc, this.board)) underAttack = true;
+                            if (this.isValidMoveBasic(i, j, tr, tc, this.board)) {
+                                ourPieceUnderAttack = true;
+                            }
                         }
                     }
                 }
-                if (underAttack && ourPiece) score -= this.getPieceValue(ourPiece) * 12;
+                if (ourPieceUnderAttack && ourPiece && !targetPiece) {
+                    score -= this.getPieceValue(ourPiece) * 20; // Большой штраф за потерю фигуры
+                }
                 
-                // Контроль центра
+                // КОНТРОЛЬ ЦЕНТРА
                 const centerDist = Math.abs(tr - 3.5) + Math.abs(tc - 3.5);
-                score += (7 - centerDist) * 3.5;
+                score += (7 - centerDist) * 4;
                 
-                // Развитие фигур
-                if ((ourPiece === '♘' || ourPiece === '♞' || ourPiece === '♗' || ourPiece === '♝') && moveCount < 25) score += 7;
+                // РАЗВИТИЕ
+                if (moveCount < 25 && (ourPiece === '♘' || ourPiece === '♞' || ourPiece === '♗' || ourPiece === '♝')) score += 8;
                 
-                // Превращение пешки
-                if ((ourPiece === '♙' && tr === 0) || (ourPiece === '♟' && tr === 7)) score += 100;
+                // ПРЕВРАЩЕНИЕ ПЕШКИ
+                if ((ourPiece === '♙' && tr === 0) || (ourPiece === '♟' && tr === 7)) score += 120;
                 
-                // Рокировка
-                if ((ourPiece === '♔' || ourPiece === '♚') && Math.abs(tc - col) === 2) score += 30;
+                // РОКИРОВКА
+                if ((ourPiece === '♔' || ourPiece === '♚') && Math.abs(tc - col) === 2) score += 35;
                 
-                // Уход от шаха
+                // УХОД ОТ ШАХА
                 if (this.isCheck(this.botColor)) {
                     const testBoard = this.copyBoard(this.board);
                     testBoard[tr][tc] = testBoard[row][col];
                     testBoard[row][col] = '';
-                    if (!this.isKingInCheck(this.botColor, testBoard)) score += 800;
+                    if (!this.isKingInCheck(this.botColor, testBoard)) score += 1000;
                 }
                 
-                // Шах противнику
+                // ШАХ ПРОТИВНИКУ
                 const oldTurn = this.currentTurn;
                 this.currentTurn = this.botColor;
                 const pieceBefore = this.board[row][col];
@@ -497,9 +505,9 @@ class ChessGame {
                 this.board[row][col] = pieceBefore;
                 this.board[tr][tc] = targetBefore;
                 this.currentTurn = oldTurn;
-                if (givesCheck) score += 45;
+                if (givesCheck) score += 60;
                 
-                score += Math.random() * 3;
+                score += Math.random() * 2;
                 
                 if (score > bestScore) {
                     bestScore = score;
@@ -515,7 +523,7 @@ class ChessGame {
                 this.updateUI();
             }
             this.botThinking = false;
-        }, 80);
+        }, 100);
     }
     
     handleCellClick(row, col) {
